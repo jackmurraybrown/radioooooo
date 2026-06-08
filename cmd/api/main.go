@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"radioooooo/internal/config"
+	"radioooooo/internal/database"
 )
 
 func main() {
@@ -20,6 +22,21 @@ func main() {
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
+
+	ctx := context.Background()
+
+	db, err := database.Connect(ctx, cfg.DatabaseURL)
+	if err != nil {
+		slog.Error("failed to connect to database", "error", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+
+	if err := database.Migrate(cfg.DatabaseURL); err != nil {
+		slog.Error("failed to run migrations", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("migrations applied")
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -31,7 +48,7 @@ func main() {
 	})
 
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.Port),
+		Addr:    fmt.Sprintf(":%s", cfg.Port),
 		Handler: r,
 	}
 
