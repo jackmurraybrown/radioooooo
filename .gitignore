@@ -1,0 +1,14 @@
+# binary output
+/bin/
+
+# environment
+.env
+.env.*
+
+# os
+.DS_Store
+
+# editor
+.idea/
+.vscode/
+*.swp
