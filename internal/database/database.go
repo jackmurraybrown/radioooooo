@@ -27,7 +27,7 @@ func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-// migrate runs any pending migrations. safe to call on every startup --
+// migrate runs any pending migrations. safe to call on every startup —
 // it is a no-op when the schema is already up to date.
 func Migrate(dsn string) error {
 	source, err := iofs.New(migrationsFS, "migrations")

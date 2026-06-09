@@ -1,16 +1,23 @@
 package config
 
-import "github.com/kelseyhightower/envconfig"
+import (
+	"fmt"
+	"os"
+)
 
 type Config struct {
-	DatabaseURL string `envconfig:"DATABASE_URL" required:"true"`
-	Port        string `envconfig:"PORT"         default:"8080"`
+	DatabaseURL string
+	Port        string
 }
 
 func Load() (*Config, error) {
-	var cfg Config
-	if err := envconfig.Process("", &cfg); err != nil {
-		return nil, err
+	cfg := &Config{Port: "8080"}
+	cfg.DatabaseURL = os.Getenv("DATABASE_URL")
+	if cfg.DatabaseURL == "" {
+		return nil, fmt.Errorf("DATABASE_URL is required")
 	}
-	return &cfg, nil
+	if p := os.Getenv("PORT"); p != "" {
+		cfg.Port = p
+	}
+	return cfg, nil
 }

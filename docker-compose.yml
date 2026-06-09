@@ -24,5 +24,12 @@ services:
       db:
         condition: service_healthy
 
+  # liquidsoap and icecast are added in v0.3
+  # liquidsoap:
+  #   image: savonet/liquidsoap:2.3.0
+  #
+  # icecast:
+  #   image: ...
+
 volumes:
   postgres_data:
