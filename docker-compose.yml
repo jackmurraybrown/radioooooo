@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: radiooo
+      POSTGRES_USER: radiooo
+      POSTGRES_PASSWORD: radiooo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U radiooo -d radiooo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # liquidsoap and icecast are added in v0.3
+  # liquidsoap:
+  #   image: savonet/liquidsoap:2.3.0
+  #
+  # icecast:
+  #   image: ...
+
+volumes:
+  postgres_data:
