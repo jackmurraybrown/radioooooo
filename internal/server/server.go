@@ -17,6 +17,7 @@ import (
 	"radioooooo/internal/media"
 	"radioooooo/internal/playlist"
 	"radioooooo/internal/station"
+	"radioooooo/internal/user"
 )
 
 type Server struct {
@@ -35,11 +36,11 @@ func New(cfg *config.Config, db *pgxpool.Pool) *Server {
 	episodeStore := episode.NewStore(db)
 	mediaStore := media.NewStore(db)
 	playlistStore := playlist.NewStore(db)
+	userStore := user.NewStore(db)
 
-	// apiKeyMiddleware runs on every request. if a valid bearer token is present it
-	// populates the context with the authenticated station id. handlers that need
-	// auth check for this value themselves via auth.StationIDFromContext.
-	r.Use(apiKeyMiddleware(stationStore))
+	// authMiddleware runs on every request. tries JWT first (no db hit), then
+	// falls back to API key. either way stamps the station id on the context.
+	r.Use(authMiddleware(stationStore, cfg.JWTSecret))
 
 	humaConfig := huma.DefaultConfig("Radiooo API", "0.1.0")
 	humaConfig.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
@@ -53,6 +54,7 @@ func New(cfg *config.Config, db *pgxpool.Pool) *Server {
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
+	auth.NewHandler(userStore, cfg.JWTSecret).Register(api)
 	station.NewHandler(stationStore).Register(api)
 	channel.NewHandler(channelStore).Register(api)
 	episode.NewHandler(episodeStore).Register(api)
@@ -66,13 +68,18 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
 }
 
-func apiKeyMiddleware(store *station.Store) func(http.Handler) http.Handler {
+// authMiddleware tries JWT first (stateless, no db), then API key (db lookup).
+// whichever succeeds stamps the station id on the context.
+func authMiddleware(store *station.Store, jwtSecret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 			if token != "" {
-				stationID, err := store.VerifyAPIKey(r.Context(), token)
-				if err == nil {
+				if claims, err := auth.ParseAccessToken(jwtSecret, token); err == nil {
+					if stationID, ok := claims["station_id"].(string); ok && stationID != "" {
+						r = r.WithContext(auth.WithStationID(r.Context(), stationID))
+					}
+				} else if stationID, err := store.VerifyAPIKey(r.Context(), token); err == nil {
 					r = r.WithContext(auth.WithStationID(r.Context(), stationID))
 				}
 			}
