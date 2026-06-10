@@ -70,15 +70,13 @@ func (h *Handler) Register(api huma.API) {
 // --- types ---
 
 type episodeBody struct {
-	Title       string    `json:"title"                 minLength:"1" maxLength:"200"`
-	Description string    `json:"description,omitempty" maxLength:"2000"`
-	StartTime   time.Time `json:"startTime"`
-	EndTime     time.Time `json:"endTime"`
-	Type        string    `json:"type"                  enum:"live,recorded,external,playlist"`
-	Source      struct {
-		Adapter string `json:"adapter" minLength:"1"`
-		Ref     string `json:"ref"     minLength:"1"`
-	} `json:"source"`
+	Title         string    `json:"title"                  minLength:"1" maxLength:"200"`
+	Description   string    `json:"description,omitempty"  maxLength:"2000"`
+	StartTime     time.Time `json:"startTime"`
+	EndTime       time.Time `json:"endTime"`
+	Type          string    `json:"type"                   enum:"live,recorded,external,playlist"`
+	SourceAdapter string    `json:"sourceAdapter"          minLength:"1"`
+	SourceRef     string    `json:"sourceRef"              minLength:"1"`
 }
 
 type createInput struct {
@@ -105,12 +103,10 @@ type episodeOutput struct {
 	Body Episode
 }
 
-type episodeListBody struct {
-	Episodes []Episode `json:"episodes"`
-}
-
 type listOutput struct {
-	Body episodeListBody
+	Body struct {
+		Episodes []Episode `json:"episodes"`
+	}
 }
 
 // --- handlers ---
@@ -121,15 +117,15 @@ func (h *Handler) create(ctx context.Context, input *createInput) (*episodeOutpu
 		return nil, huma.Error403Forbidden("forbidden")
 	}
 	ep, err := h.store.Create(ctx, CreateParams{
-		ChannelID:   input.ChannelID,
-		StationID:   stationID,
-		Title:       input.Body.Title,
-		Description: input.Body.Description,
-		StartTime:   input.Body.StartTime,
-		EndTime:     input.Body.EndTime,
-		Type:        input.Body.Type,
-		Adapter:     input.Body.Source.Adapter,
-		Ref:         input.Body.Source.Ref,
+		ChannelID:     input.ChannelID,
+		StationID:     stationID,
+		Title:         input.Body.Title,
+		Description:   input.Body.Description,
+		StartTime:     input.Body.StartTime,
+		EndTime:       input.Body.EndTime,
+		Type:          input.Body.Type,
+		SourceAdapter: input.Body.SourceAdapter,
+		SourceRef:     input.Body.SourceRef,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -170,13 +166,13 @@ func (h *Handler) update(ctx context.Context, input *updateInput) (*episodeOutpu
 		return nil, huma.Error403Forbidden("forbidden")
 	}
 	ep, err := h.store.Update(ctx, input.ID, input.ChannelID, stationID, UpdateParams{
-		Title:       input.Body.Title,
-		Description: input.Body.Description,
-		StartTime:   input.Body.StartTime,
-		EndTime:     input.Body.EndTime,
-		Type:        input.Body.Type,
-		Adapter:     input.Body.Source.Adapter,
-		Ref:         input.Body.Source.Ref,
+		Title:         input.Body.Title,
+		Description:   input.Body.Description,
+		StartTime:     input.Body.StartTime,
+		EndTime:       input.Body.EndTime,
+		Type:          input.Body.Type,
+		SourceAdapter: input.Body.SourceAdapter,
+		SourceRef:     input.Body.SourceRef,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

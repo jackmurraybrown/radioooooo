@@ -9,8 +9,9 @@ import (
 )
 
 const cols = `
-	e.id::text, e.channel_id::text, e.title, e.description, e.start_time, e.end_time,
-	e.type, e.source_adapter, e.source_ref, e.created_at, e.updated_at`
+	e.id::text, e.channel_id::text, e.title, e.description, e.image_ref,
+	e.start_time, e.end_time, e.type, e.source_adapter, e.source_ref,
+	e.created_at, e.updated_at`
 
 type Store struct {
 	db *pgxpool.Pool
@@ -21,25 +22,25 @@ func NewStore(db *pgxpool.Pool) *Store {
 }
 
 type CreateParams struct {
-	ChannelID   string
-	StationID   string // used to verify station owns the channel
-	Title       string
-	Description string
-	StartTime   time.Time
-	EndTime     time.Time
-	Type        string
-	Adapter     string
-	Ref         string
+	ChannelID     string
+	StationID     string // used to verify station owns the channel
+	Title         string
+	Description   string
+	StartTime     time.Time
+	EndTime       time.Time
+	Type          string
+	SourceAdapter string
+	SourceRef     string
 }
 
 type UpdateParams struct {
-	Title       string
-	Description string
-	StartTime   time.Time
-	EndTime     time.Time
-	Type        string
-	Adapter     string
-	Ref         string
+	Title         string
+	Description   string
+	StartTime     time.Time
+	EndTime       time.Time
+	Type          string
+	SourceAdapter string
+	SourceRef     string
 }
 
 // Create inserts an episode. returns pgx.ErrNoRows if the channel does not
@@ -49,18 +50,14 @@ func (s *Store) Create(ctx context.Context, p CreateParams) (Episode, error) {
 		insert into episodes (channel_id, title, description, start_time, end_time, type, source_adapter, source_ref)
 		select $1::uuid, $2, $3, $4, $5, $6, $7, $8
 		from channels where id = $1::uuid and station_id = $9::uuid
-		returning`+` id::text, channel_id::text, title, description, start_time, end_time,
-		type, source_adapter, source_ref, created_at, updated_at`,
-		p.ChannelID, p.Title, p.Description, p.StartTime, p.EndTime, p.Type, p.Adapter, p.Ref, p.StationID,
+		returning`+` id::text, channel_id::text, title, description, image_ref,
+		start_time, end_time, type, source_adapter, source_ref, created_at, updated_at`,
+		p.ChannelID, p.Title, p.Description, p.StartTime, p.EndTime, p.Type, p.SourceAdapter, p.SourceRef, p.StationID,
 	)
 	if err != nil {
 		return Episode{}, err
 	}
-	db, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbEpisode])
-	if err != nil {
-		return Episode{}, err
-	}
-	return db.toEpisode(), nil
+	return pgx.CollectOneRow(rows, pgx.RowToStructByName[Episode])
 }
 
 func (s *Store) List(ctx context.Context, channelID string) ([]Episode, error) {
@@ -73,15 +70,7 @@ func (s *Store) List(ctx context.Context, channelID string) ([]Episode, error) {
 	if err != nil {
 		return nil, err
 	}
-	dbs, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbEpisode])
-	if err != nil {
-		return nil, err
-	}
-	episodes := make([]Episode, len(dbs))
-	for i, d := range dbs {
-		episodes[i] = d.toEpisode()
-	}
-	return episodes, nil
+	return pgx.CollectRows(rows, pgx.RowToStructByName[Episode])
 }
 
 func (s *Store) Get(ctx context.Context, id, channelID string) (Episode, error) {
@@ -93,11 +82,7 @@ func (s *Store) Get(ctx context.Context, id, channelID string) (Episode, error) 
 	if err != nil {
 		return Episode{}, err
 	}
-	db, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbEpisode])
-	if err != nil {
-		return Episode{}, err
-	}
-	return db.toEpisode(), nil
+	return pgx.CollectOneRow(rows, pgx.RowToStructByName[Episode])
 }
 
 // Update returns pgx.ErrNoRows if the episode is not found or the channel does
@@ -110,18 +95,15 @@ func (s *Store) Update(ctx context.Context, id, channelID, stationID string, p U
 		from channels c
 		where e.id=$1::uuid and e.channel_id=$2::uuid
 		  and e.channel_id=c.id and c.station_id=$10::uuid
-		returning`+` e.id::text, e.channel_id::text, e.title, e.description, e.start_time, e.end_time,
-		e.type, e.source_adapter, e.source_ref, e.created_at, e.updated_at`,
-		id, channelID, p.Title, p.Description, p.StartTime, p.EndTime, p.Type, p.Adapter, p.Ref, stationID,
+		returning`+` e.id::text, e.channel_id::text, e.title, e.description, e.image_ref,
+		e.start_time, e.end_time, e.type, e.source_adapter, e.source_ref,
+		e.created_at, e.updated_at`,
+		id, channelID, p.Title, p.Description, p.StartTime, p.EndTime, p.Type, p.SourceAdapter, p.SourceRef, stationID,
 	)
 	if err != nil {
 		return Episode{}, err
 	}
-	db, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbEpisode])
-	if err != nil {
-		return Episode{}, err
-	}
-	return db.toEpisode(), nil
+	return pgx.CollectOneRow(rows, pgx.RowToStructByName[Episode])
 }
 
 // Delete returns pgx.ErrNoRows if the episode is not found or the channel does

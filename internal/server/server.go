@@ -14,6 +14,7 @@ import (
 	"radioooooo/internal/channel"
 	"radioooooo/internal/config"
 	"radioooooo/internal/episode"
+	"radioooooo/internal/media"
 	"radioooooo/internal/station"
 )
 
@@ -31,6 +32,7 @@ func New(cfg *config.Config, db *pgxpool.Pool) *Server {
 	stationStore := station.NewStore(db)
 	channelStore := channel.NewStore(db)
 	episodeStore := episode.NewStore(db)
+	mediaStore := media.NewStore(db)
 
 	// apiKeyMiddleware runs on every request. if a valid bearer token is present it
 	// populates the context with the authenticated station id. handlers that need
@@ -52,6 +54,7 @@ func New(cfg *config.Config, db *pgxpool.Pool) *Server {
 	station.NewHandler(stationStore).Register(api)
 	channel.NewHandler(channelStore).Register(api)
 	episode.NewHandler(episodeStore).Register(api)
+	media.NewHandler(mediaStore).Register(api)
 
 	return &Server{router: r}
 }
