@@ -23,7 +23,7 @@ func (h *Handler) Register(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID:   "create-media",
 		Method:        http.MethodPost,
-		Path:          "/stations/{stationId}/media",
+		Path:          "/media",
 		Summary:       "Add a media item",
 		Tags:          []string{"Media"},
 		Security:      []map[string][]string{{"bearerAuth": {}}},
@@ -33,7 +33,7 @@ func (h *Handler) Register(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "list-media",
 		Method:      http.MethodGet,
-		Path:        "/stations/{stationId}/media",
+		Path:        "/media",
 		Summary:     "List media for a station",
 		Tags:        []string{"Media"},
 		Security:    []map[string][]string{{"bearerAuth": {}}},
@@ -42,7 +42,7 @@ func (h *Handler) Register(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "get-media",
 		Method:      http.MethodGet,
-		Path:        "/stations/{stationId}/media/{id}",
+		Path:        "/media/{id}",
 		Summary:     "Get a media item",
 		Tags:        []string{"Media"},
 		Security:    []map[string][]string{{"bearerAuth": {}}},
@@ -51,7 +51,7 @@ func (h *Handler) Register(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "update-media",
 		Method:      http.MethodPut,
-		Path:        "/stations/{stationId}/media/{id}",
+		Path:        "/media/{id}",
 		Summary:     "Update media metadata",
 		Tags:        []string{"Media"},
 		Security:    []map[string][]string{{"bearerAuth": {}}},
@@ -60,7 +60,7 @@ func (h *Handler) Register(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID:   "delete-media",
 		Method:        http.MethodDelete,
-		Path:          "/stations/{stationId}/media/{id}",
+		Path:          "/media/{id}",
 		Summary:       "Delete a media item",
 		Tags:          []string{"Media"},
 		Security:      []map[string][]string{{"bearerAuth": {}}},
@@ -70,23 +70,18 @@ func (h *Handler) Register(api huma.API) {
 
 // --- types ˚₊✧ ---
 
-type stationInput struct {
-	StationID string `path:"stationId"`
-}
-
-type mediaInput struct {
-	StationID string `path:"stationId"`
-	ID        string `path:"id"`
+type idInput struct {
+	ID string `path:"id"`
 }
 
 type createBody struct {
-	Title         string   `json:"title"                   minLength:"1" maxLength:"200"`
-	Artist        *string  `json:"artist,omitempty"        maxLength:"200"`
-	ArtworkRef    *string  `json:"artworkRef,omitempty"`
-	FileFormat    *string  `json:"fileFormat,omitempty"    enum:"mp3,aac,m4a"`
-	FileSizeBytes *int64   `json:"fileSizeBytes,omitempty"`
-	SourceAdapter string   `json:"sourceAdapter"           minLength:"1"`
-	SourceRef     string   `json:"sourceRef"               minLength:"1"`
+	Title         string  `json:"title"                   minLength:"1" maxLength:"200"`
+	Artist        *string `json:"artist,omitempty"        maxLength:"200"`
+	ArtworkRef    *string `json:"artworkRef,omitempty"`
+	FileFormat    *string `json:"fileFormat,omitempty"    enum:"mp3,aac,m4a"`
+	FileSizeBytes *int64  `json:"fileSizeBytes,omitempty"`
+	SourceAdapter string  `json:"sourceAdapter"           minLength:"1"`
+	SourceRef     string  `json:"sourceRef"               minLength:"1"`
 }
 
 type updateBody struct {
@@ -97,14 +92,12 @@ type updateBody struct {
 }
 
 type createInput struct {
-	StationID string `path:"stationId"`
-	Body      createBody
+	Body createBody
 }
 
 type updateInput struct {
-	StationID string `path:"stationId"`
-	ID        string `path:"id"`
-	Body      updateBody
+	ID   string `path:"id"`
+	Body updateBody
 }
 
 type mediaOutput struct {
@@ -121,7 +114,7 @@ type listOutput struct {
 
 func (h *Handler) create(ctx context.Context, input *createInput) (*mediaOutput, error) {
 	stationID, ok := auth.StationIDFromContext(ctx)
-	if !ok || stationID != input.StationID {
+	if !ok {
 		return nil, huma.Error403Forbidden("forbidden")
 	}
 	item, err := h.store.Create(ctx, CreateParams{
@@ -141,9 +134,9 @@ func (h *Handler) create(ctx context.Context, input *createInput) (*mediaOutput,
 	return &mediaOutput{Body: item}, nil
 }
 
-func (h *Handler) list(ctx context.Context, input *stationInput) (*listOutput, error) {
+func (h *Handler) list(ctx context.Context, input *struct{}) (*listOutput, error) {
 	stationID, ok := auth.StationIDFromContext(ctx)
-	if !ok || stationID != input.StationID {
+	if !ok {
 		return nil, huma.Error403Forbidden("forbidden")
 	}
 	items, err := h.store.List(ctx, stationID)
@@ -156,9 +149,9 @@ func (h *Handler) list(ctx context.Context, input *stationInput) (*listOutput, e
 	return out, nil
 }
 
-func (h *Handler) get(ctx context.Context, input *mediaInput) (*mediaOutput, error) {
+func (h *Handler) get(ctx context.Context, input *idInput) (*mediaOutput, error) {
 	stationID, ok := auth.StationIDFromContext(ctx)
-	if !ok || stationID != input.StationID {
+	if !ok {
 		return nil, huma.Error403Forbidden("forbidden")
 	}
 	item, err := h.store.Get(ctx, input.ID, stationID)
@@ -174,7 +167,7 @@ func (h *Handler) get(ctx context.Context, input *mediaInput) (*mediaOutput, err
 
 func (h *Handler) update(ctx context.Context, input *updateInput) (*mediaOutput, error) {
 	stationID, ok := auth.StationIDFromContext(ctx)
-	if !ok || stationID != input.StationID {
+	if !ok {
 		return nil, huma.Error403Forbidden("forbidden")
 	}
 	item, err := h.store.Update(ctx, input.ID, stationID, UpdateParams{
@@ -193,9 +186,9 @@ func (h *Handler) update(ctx context.Context, input *updateInput) (*mediaOutput,
 	return &mediaOutput{Body: item}, nil
 }
 
-func (h *Handler) delete(ctx context.Context, input *mediaInput) (*struct{}, error) {
+func (h *Handler) delete(ctx context.Context, input *idInput) (*struct{}, error) {
 	stationID, ok := auth.StationIDFromContext(ctx)
-	if !ok || stationID != input.StationID {
+	if !ok {
 		return nil, huma.Error403Forbidden("forbidden")
 	}
 	if err := h.store.Delete(ctx, input.ID, stationID); err != nil {

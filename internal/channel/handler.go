@@ -24,7 +24,7 @@ func (h *Handler) Register(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID:   "create-channel",
 		Method:        http.MethodPost,
-		Path:          "/stations/{stationId}/channels",
+		Path:          "/channels",
 		Summary:       "Create a channel",
 		Tags:          []string{"Channels"},
 		Security:      []map[string][]string{{"bearerAuth": {}}},
@@ -34,23 +34,25 @@ func (h *Handler) Register(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "list-channels",
 		Method:      http.MethodGet,
-		Path:        "/stations/{stationId}/channels",
+		Path:        "/channels",
 		Summary:     "List channels for a station",
 		Tags:        []string{"Channels"},
+		Security:    []map[string][]string{{"bearerAuth": {}}},
 	}, h.list)
 
 	huma.Register(api, huma.Operation{
 		OperationID: "get-channel",
 		Method:      http.MethodGet,
-		Path:        "/stations/{stationId}/channels/{id}",
+		Path:        "/channels/{id}",
 		Summary:     "Get a channel",
 		Tags:        []string{"Channels"},
+		Security:    []map[string][]string{{"bearerAuth": {}}},
 	}, h.get)
 
 	huma.Register(api, huma.Operation{
 		OperationID:   "delete-channel",
 		Method:        http.MethodDelete,
-		Path:          "/stations/{stationId}/channels/{id}",
+		Path:          "/channels/{id}",
 		Summary:       "Delete a channel",
 		Tags:          []string{"Channels"},
 		Security:      []map[string][]string{{"bearerAuth": {}}},
@@ -61,38 +63,34 @@ func (h *Handler) Register(api huma.API) {
 // --- types ---
 
 type createInput struct {
-	StationID string `path:"stationId"`
-	Body      struct {
+	Body struct {
 		Name string `json:"name" minLength:"1" maxLength:"100"`
 		Slug string `json:"slug" minLength:"1" maxLength:"50" pattern:"^[a-z0-9-]+$"`
 	}
+}
+
+type idInput struct {
+	ID string `path:"id"`
 }
 
 type channelOutput struct {
 	Body Channel
 }
 
-type channelListBody struct {
-	Channels []Channel `json:"channels"`
-}
-
 type listOutput struct {
-	Body channelListBody
-}
-
-type idInput struct {
-	StationID string `path:"stationId"`
-	ID        string `path:"id"`
+	Body struct {
+		Channels []Channel `json:"channels"`
+	}
 }
 
 // --- handlers ---
 
 func (h *Handler) create(ctx context.Context, input *createInput) (*channelOutput, error) {
-	authedID, ok := auth.StationIDFromContext(ctx)
-	if !ok || authedID != input.StationID {
+	stationID, ok := auth.StationIDFromContext(ctx)
+	if !ok {
 		return nil, huma.Error403Forbidden("forbidden")
 	}
-	ch, err := h.store.Create(ctx, input.StationID, input.Body.Name, input.Body.Slug)
+	ch, err := h.store.Create(ctx, stationID, input.Body.Name, input.Body.Slug)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -104,8 +102,12 @@ func (h *Handler) create(ctx context.Context, input *createInput) (*channelOutpu
 	return &channelOutput{Body: ch}, nil
 }
 
-func (h *Handler) list(ctx context.Context, input *idInput) (*listOutput, error) {
-	channels, err := h.store.List(ctx, input.StationID)
+func (h *Handler) list(ctx context.Context, input *struct{}) (*listOutput, error) {
+	stationID, ok := auth.StationIDFromContext(ctx)
+	if !ok {
+		return nil, huma.Error403Forbidden("forbidden")
+	}
+	channels, err := h.store.List(ctx, stationID)
 	if err != nil {
 		slog.Error("failed to list channels", "error", err)
 		return nil, huma.Error500InternalServerError("internal error")
@@ -116,7 +118,11 @@ func (h *Handler) list(ctx context.Context, input *idInput) (*listOutput, error)
 }
 
 func (h *Handler) get(ctx context.Context, input *idInput) (*channelOutput, error) {
-	ch, err := h.store.Get(ctx, input.ID, input.StationID)
+	stationID, ok := auth.StationIDFromContext(ctx)
+	if !ok {
+		return nil, huma.Error403Forbidden("forbidden")
+	}
+	ch, err := h.store.Get(ctx, input.ID, stationID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, huma.Error404NotFound("channel not found")
@@ -128,11 +134,11 @@ func (h *Handler) get(ctx context.Context, input *idInput) (*channelOutput, erro
 }
 
 func (h *Handler) delete(ctx context.Context, input *idInput) (*struct{}, error) {
-	authedID, ok := auth.StationIDFromContext(ctx)
-	if !ok || authedID != input.StationID {
+	stationID, ok := auth.StationIDFromContext(ctx)
+	if !ok {
 		return nil, huma.Error403Forbidden("forbidden")
 	}
-	if err := h.store.Delete(ctx, input.ID, input.StationID); err != nil {
+	if err := h.store.Delete(ctx, input.ID, stationID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, huma.Error404NotFound("channel not found")
 		}
