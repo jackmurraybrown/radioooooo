@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
-// ✦ auth state — single source of truth for tokens
+// ✮ ⋆ ˚｡𖦹 auth state — single source of truth for tokens
 export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref<string | null>(localStorage.getItem('accessToken'))
   const refreshToken = ref<string | null>(localStorage.getItem('refreshToken'))

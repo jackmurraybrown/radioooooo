@@ -22,7 +22,7 @@ const router = createRouter({
   ],
 })
 
-// ✦ auth guard — redirect unauthenticated users to login
+// ⊹ ࣪ ˖ auth guard — redirect unauthenticated users to login
 router.beforeEach((to) => {
   const auth = useAuthStore()
   if (!to.meta.public && !auth.isAuthenticated()) {
