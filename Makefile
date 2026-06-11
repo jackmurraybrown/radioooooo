@@ -1,16 +1,13 @@
-.PHONY: build test tidy lint run
+.PHONY: api frontend
 
-build:
-	go build ./...
+api:
+	cd api && go run ./cmd/api
 
-test:
-	gotestsum --format testname ./...
+frontend:
+	cd frontend && npm run dev
 
-tidy:
-	go mod tidy
+build-api:
+	cd api && go build ./...
 
-lint:
-	golangci-lint run ./...
-
-run:
-	go run ./cmd/api
+build-frontend:
+	cd frontend && npm run build

@@ -1,9 +1,15 @@
-# binary output
-/bin/
+# api
+/api/bin/
 
-# environment
+# frontend
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.env*.local
+
+# environment — .env.example files stay tracked
 .env
-.env.*
+.env.local
+.env.*.local
 
 # os
 .DS_Store
