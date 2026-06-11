@@ -51,11 +51,28 @@ func New(cfg *config.Config, db *pgxpool.Pool) *Server {
 	r.Use(authMiddleware(stationStore, cfg.JWTSecret))
 
 	humaConfig := huma.DefaultConfig("Radiooo API", "0.1.0")
+	humaConfig.DocsPath = "" // ⋆˙⟡ we serve /docs ourselves to pass scalar config
 	humaConfig.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
 		"bearerAuth": {Type: "http", Scheme: "bearer"},
 	}
 
 	api := humachi.New(r, humaConfig)
+
+	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Radiooo API</title>
+  </head>
+  <body>
+    <script id="api-reference" data-url="/openapi.json" data-configuration='{"agent":{"enabled":false}}'></script>
+    <script src="https://unpkg.com/@scalar/api-reference@1.59.2/dist/browser/standalone.js" crossorigin></script>
+  </body>
+</html>`))
+	})
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

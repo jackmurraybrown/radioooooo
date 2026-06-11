@@ -2,7 +2,7 @@
 // ⋆˙⟡ thin view — delegates to LoginForm, owns async state
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import LoginForm from '@/components/auth/LoginForm.vue'
+import LoginForm from '@/components/LoginForm.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()

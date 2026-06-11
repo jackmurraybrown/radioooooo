@@ -74,7 +74,7 @@ type idInput struct {
 	ID string `path:"id"`
 }
 
-type createBody struct {
+type mediaCreateBody struct {
 	Title         string  `json:"title"                   minLength:"1" maxLength:"200"`
 	Artist        *string `json:"artist,omitempty"        maxLength:"200"`
 	ArtworkRef    *string `json:"artworkRef,omitempty"`
@@ -84,7 +84,7 @@ type createBody struct {
 	SourceRef     string  `json:"sourceRef"               minLength:"1"`
 }
 
-type updateBody struct {
+type mediaUpdateBody struct {
 	Title      string  `json:"title"                minLength:"1" maxLength:"200"`
 	Artist     *string `json:"artist,omitempty"     maxLength:"200"`
 	ArtworkRef *string `json:"artworkRef,omitempty"`
@@ -92,22 +92,24 @@ type updateBody struct {
 }
 
 type createInput struct {
-	Body createBody
+	Body mediaCreateBody
 }
 
 type updateInput struct {
 	ID   string `path:"id"`
-	Body updateBody
+	Body mediaUpdateBody
 }
 
 type mediaOutput struct {
 	Body Media
 }
 
+type mediaListBody struct {
+	Media []Media `json:"media"`
+}
+
 type listOutput struct {
-	Body struct {
-		Media []Media `json:"media"`
-	}
+	Body mediaListBody
 }
 
 // --- handlers ✦ ✧ ✦ ---

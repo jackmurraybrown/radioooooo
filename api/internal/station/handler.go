@@ -62,29 +62,35 @@ func (h *Handler) Register(api huma.API) {
 
 // --- types ---
 
+type signupBody struct {
+	Name     string `json:"name"     minLength:"1" maxLength:"100" doc:"display name of the station"`
+	Slug     string `json:"slug"     minLength:"1" maxLength:"50"  pattern:"^[a-z0-9-]+$" doc:"url-safe identifier"`
+	Email    string `json:"email"    format:"email"                doc:"admin user email"`
+	Password string `json:"password" minLength:"8"                 doc:"admin user password"`
+}
+
+type signupResponseBody struct {
+	Station      Station `json:"station"`
+	APIKey       string  `json:"apiKey"       doc:"store securely — shown only once"`
+	AccessToken  string  `json:"accessToken"`
+	RefreshToken string  `json:"refreshToken"`
+	TokenType    string  `json:"tokenType"`
+}
+
+type stationListBody struct {
+	Stations []Station `json:"stations"`
+}
+
 type createInput struct {
-	Body struct {
-		Name     string `json:"name"     minLength:"1" maxLength:"100" doc:"display name of the station"`
-		Slug     string `json:"slug"     minLength:"1" maxLength:"50"  pattern:"^[a-z0-9-]+$" doc:"url-safe identifier"`
-		Email    string `json:"email"    format:"email"                doc:"admin user email"`
-		Password string `json:"password" minLength:"8"                 doc:"admin user password"`
-	}
+	Body signupBody
 }
 
 type createOutput struct {
-	Body struct {
-		Station      Station `json:"station"`
-		APIKey       string  `json:"apiKey"       doc:"store securely — shown only once"`
-		AccessToken  string  `json:"accessToken"`
-		RefreshToken string  `json:"refreshToken"`
-		TokenType    string  `json:"tokenType"`
-	}
+	Body signupResponseBody
 }
 
 type listOutput struct {
-	Body struct {
-		Stations []Station `json:"stations"`
-	}
+	Body stationListBody
 }
 
 type getInput struct {

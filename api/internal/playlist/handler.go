@@ -108,7 +108,7 @@ type itemInput struct {
 	ItemID string `path:"itemId"`
 }
 
-type createBody struct {
+type playlistCreateBody struct {
 	Name          string  `json:"name"                    minLength:"1" maxLength:"200"`
 	Shuffle       bool    `json:"shuffle"`
 	Loop          bool    `json:"loop"`
@@ -116,7 +116,7 @@ type createBody struct {
 	SourceRef     *string `json:"sourceRef,omitempty"     minLength:"1"`
 }
 
-type updateBody struct {
+type playlistUpdateBody struct {
 	Name    string `json:"name"    minLength:"1" maxLength:"200"`
 	Shuffle bool   `json:"shuffle"`
 	Loop    bool   `json:"loop"`
@@ -131,12 +131,12 @@ type setItemsBody struct {
 }
 
 type createInput struct {
-	Body createBody
+	Body playlistCreateBody
 }
 
 type updateInput struct {
 	ID   string `path:"id"`
-	Body updateBody
+	Body playlistUpdateBody
 }
 
 type addItemInput struct {
@@ -153,17 +153,25 @@ type playlistOutput struct {
 	Body Playlist
 }
 
+type playlistWithItemsBody struct {
+	Playlist Playlist       `json:"playlist"`
+	Items    []PlaylistItem `json:"items"`
+}
+
+type playlistListBody struct {
+	Playlists []Playlist `json:"playlists"`
+}
+
+type playlistItemsBody struct {
+	Items []PlaylistItem `json:"items"`
+}
+
 type playlistWithItemsOutput struct {
-	Body struct {
-		Playlist Playlist       `json:"playlist"`
-		Items    []PlaylistItem `json:"items"`
-	}
+	Body playlistWithItemsBody
 }
 
 type listOutput struct {
-	Body struct {
-		Playlists []Playlist `json:"playlists"`
-	}
+	Body playlistListBody
 }
 
 type itemOutput struct {
@@ -171,9 +179,7 @@ type itemOutput struct {
 }
 
 type itemsOutput struct {
-	Body struct {
-		Items []PlaylistItem `json:"items"`
-	}
+	Body playlistItemsBody
 }
 
 // --- handlers ✦ ✧ ✦ ---

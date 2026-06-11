@@ -103,10 +103,12 @@ type episodeOutput struct {
 	Body Episode
 }
 
+type episodeListBody struct {
+	Episodes []Episode `json:"episodes"`
+}
+
 type listOutput struct {
-	Body struct {
-		Episodes []Episode `json:"episodes"`
-	}
+	Body episodeListBody
 }
 
 // --- handlers ---

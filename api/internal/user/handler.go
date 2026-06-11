@@ -61,18 +61,26 @@ func (h *Handler) Register(api huma.API) {
 
 // --- types ˚₊✧ ---
 
+type inviteBody struct {
+	Email    string `json:"email"    format:"email"`
+	Password string `json:"password" minLength:"8"`
+}
+
 type createInput struct {
-	Body struct {
-		Email    string `json:"email"    format:"email"`
-		Password string `json:"password" minLength:"8"`
-	}
+	Body inviteBody
+}
+
+type changePasswordBody struct {
+	CurrentPassword string `json:"currentPassword" minLength:"1"`
+	NewPassword     string `json:"newPassword"     minLength:"8"`
+}
+
+type userListBody struct {
+	Users []User `json:"users"`
 }
 
 type changePasswordInput struct {
-	Body struct {
-		CurrentPassword string `json:"currentPassword" minLength:"1"`
-		NewPassword     string `json:"newPassword"     minLength:"8"`
-	}
+	Body changePasswordBody
 }
 
 type userOutput struct {
@@ -80,9 +88,7 @@ type userOutput struct {
 }
 
 type listOutput struct {
-	Body struct {
-		Users []User `json:"users"`
-	}
+	Body userListBody
 }
 
 // --- handlers ✦ ✧ ✦ ---

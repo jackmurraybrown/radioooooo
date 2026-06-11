@@ -62,11 +62,17 @@ func (h *Handler) Register(api huma.API) {
 
 // --- types ---
 
+type channelBody struct {
+	Name string `json:"name" minLength:"1" maxLength:"100"`
+	Slug string `json:"slug" minLength:"1" maxLength:"50" pattern:"^[a-z0-9-]+$"`
+}
+
+type channelListBody struct {
+	Channels []Channel `json:"channels"`
+}
+
 type createInput struct {
-	Body struct {
-		Name string `json:"name" minLength:"1" maxLength:"100"`
-		Slug string `json:"slug" minLength:"1" maxLength:"50" pattern:"^[a-z0-9-]+$"`
-	}
+	Body channelBody
 }
 
 type idInput struct {
@@ -78,9 +84,7 @@ type channelOutput struct {
 }
 
 type listOutput struct {
-	Body struct {
-		Channels []Channel `json:"channels"`
-	}
+	Body channelListBody
 }
 
 // --- handlers ---
