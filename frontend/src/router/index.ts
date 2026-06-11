@@ -12,12 +12,30 @@ const router = createRouter({
     },
     {
       path: '/',
+      component: () => import('@/components/AppLayout.vue'),
       redirect: '/schedule',
-    },
-    {
-      path: '/schedule',
-      name: 'schedule',
-      component: () => import('@/views/ScheduleView.vue'),
+      children: [
+        {
+          path: 'schedule',
+          name: 'schedule',
+          component: () => import('@/views/ScheduleView.vue'),
+        },
+        {
+          path: 'media',
+          name: 'media',
+          component: () => import('@/views/MediaView.vue'),
+        },
+        {
+          path: 'playlists',
+          name: 'playlists',
+          component: () => import('@/views/PlaylistsView.vue'),
+        },
+        {
+          path: 'settings',
+          name: 'settings',
+          component: () => import('@/views/SettingsView.vue'),
+        },
+      ],
     },
   ],
 })
