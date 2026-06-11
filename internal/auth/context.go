@@ -1,31 +1,26 @@
-// package auth handles API key authentication for station requests.
+// package auth handles bearer token authentication for station requests.
 //
-// how it works:
+// two token types are supported, both stamping the station id on the context:
 //
-//  1. when a station is created, an API key is generated and returned once
-//     (plain text, never stored — only its SHA-256 hash lives in api_keys).
+//  1. jwt access tokens — issued by POST /auth/login, valid for 15 minutes.
+//     the authMiddleware in server.go parses and validates these first (no db hit).
 //
-//  2. the frontend stores the key (e.g. in localStorage or a cookie) and sends
-//     it on every request as a bearer token:
-//     Authorization: Bearer <api-key>
+//  2. api keys — long-lived, sha-256 hashed in api_keys. for machine-to-machine
+//     access (liquidsoap callbacks, external integrations). the middleware falls
+//     back to an api key lookup if jwt parsing fails.
 //
-//  3. the apiKeyMiddleware in server.go intercepts every request, hashes the
-//     token, looks it up in api_keys, and — if valid — stamps the station ID
-//     onto the request context via WithStationID.
-//
-//  4. handlers that require auth call StationIDFromContext. if no station ID is
-//     present the request was unauthenticated and the handler returns 403.
-//
-// future: JWT auth with user roles (super admin / station admin / DJ)
-// will replace or sit alongside this. the API key model stays for machine-to-machine
-// access (e.g. Liquidsoap callbacks, external integrations).
+// handlers call StationIDFromContext to retrieve the authenticated station id.
+// if no station id is present the request was unauthenticated — return 403.
 package auth
 
 import "context"
 
 type contextKey string
 
-const stationIDKey contextKey = "stationID"
+const (
+	stationIDKey contextKey = "stationID"
+	userIDKey    contextKey = "userID"
+)
 
 // WithStationID returns a new context carrying the authenticated station ID.
 func WithStationID(ctx context.Context, id string) context.Context {
@@ -33,9 +28,19 @@ func WithStationID(ctx context.Context, id string) context.Context {
 }
 
 // StationIDFromContext returns the authenticated station ID and whether one was set.
-// handlers use the bool to distinguish unauthenticated requests (return 403) from
-// authenticated ones.
 func StationIDFromContext(ctx context.Context) (string, bool) {
 	id, ok := ctx.Value(stationIDKey).(string)
+	return id, ok
+}
+
+// WithUserID returns a new context carrying the authenticated user ID.
+func WithUserID(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, userIDKey, id)
+}
+
+// UserIDFromContext returns the authenticated user ID and whether one was set.
+// only present for JWT auth — api key requests have no associated user.
+func UserIDFromContext(ctx context.Context) (string, bool) {
+	id, ok := ctx.Value(userIDKey).(string)
 	return id, ok
 }

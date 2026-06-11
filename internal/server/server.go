@@ -9,14 +9,17 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"radioooooo/internal/auth"
 	"radioooooo/internal/channel"
 	"radioooooo/internal/config"
 	"radioooooo/internal/episode"
+	"radioooooo/internal/login"
 	"radioooooo/internal/media"
 	"radioooooo/internal/playlist"
 	"radioooooo/internal/station"
+	"radioooooo/internal/user"
 )
 
 type Server struct {
@@ -29,17 +32,23 @@ func New(cfg *config.Config, db *pgxpool.Pool) *Server {
 	r.Use(chiMiddleware.Logger)
 	r.Use(chiMiddleware.Recoverer)
 	r.Use(chiMiddleware.StripSlashes)
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins: cfg.AllowedOrigins,
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Authorization", "Content-Type"},
+		MaxAge:         300,
+	}))
 
 	stationStore := station.NewStore(db)
 	channelStore := channel.NewStore(db)
 	episodeStore := episode.NewStore(db)
 	mediaStore := media.NewStore(db)
 	playlistStore := playlist.NewStore(db)
+	userStore := user.NewStore(db)
 
-	// apiKeyMiddleware runs on every request. if a valid bearer token is present it
-	// populates the context with the authenticated station id. handlers that need
-	// auth check for this value themselves via auth.StationIDFromContext.
-	r.Use(apiKeyMiddleware(stationStore))
+	// authMiddleware runs on every request. tries JWT first (no db hit), then
+	// falls back to API key. either way stamps the station id on the context.
+	r.Use(authMiddleware(stationStore, cfg.JWTSecret))
 
 	humaConfig := huma.DefaultConfig("Radiooo API", "0.1.0")
 	humaConfig.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
@@ -53,7 +62,9 @@ func New(cfg *config.Config, db *pgxpool.Pool) *Server {
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
-	station.NewHandler(stationStore).Register(api)
+	login.NewHandler(userStore, cfg.JWTSecret).Register(api)
+	station.NewHandler(stationStore, userStore, cfg.JWTSecret).Register(api)
+	user.NewHandler(userStore).Register(api)
 	channel.NewHandler(channelStore).Register(api)
 	episode.NewHandler(episodeStore).Register(api)
 	media.NewHandler(mediaStore).Register(api)
@@ -66,13 +77,23 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
 }
 
-func apiKeyMiddleware(store *station.Store) func(http.Handler) http.Handler {
+// authMiddleware tries JWT first (stateless, no db), then API key (db lookup).
+// whichever succeeds stamps the station id on the context.
+func authMiddleware(store *station.Store, jwtSecret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 			if token != "" {
-				stationID, err := store.VerifyAPIKey(r.Context(), token)
-				if err == nil {
+				if claims, err := auth.ParseAccessToken(jwtSecret, token); err == nil {
+					ctx := r.Context()
+					if stationID, ok := claims["station_id"].(string); ok && stationID != "" {
+						ctx = auth.WithStationID(ctx, stationID)
+					}
+					if userID, ok := claims["sub"].(string); ok && userID != "" {
+						ctx = auth.WithUserID(ctx, userID)
+					}
+					r = r.WithContext(ctx)
+				} else if stationID, err := store.VerifyAPIKey(r.Context(), token); err == nil {
 					r = r.WithContext(auth.WithStationID(r.Context(), stationID))
 				}
 			}
