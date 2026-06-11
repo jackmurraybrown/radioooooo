@@ -1,21 +1,7 @@
 import { ref, computed, watch, toValue, type MaybeRefOrGetter } from 'vue'
 import type { EventInput } from '@fullcalendar/core'
 import { api } from '@/api/client'
-
-// ⋆˙⟡ ⋆.˚ episode shape from the api
-interface Episode {
-  id: string
-  channelId: string
-  title: string
-  description?: string
-  startTime: string
-  endTime: string
-  type: 'live' | 'recorded' | 'external' | 'playlist'
-  sourceAdapter: string
-  sourceRef: string
-}
-
-export type EpisodeBody = Omit<Episode, 'id' | 'channelId'>
+import type { Episode, EpisodeBody } from '@/api/types'
 
 // ✮ ⋆ ˚｡𖦹 episode type → calendar colour
 const typeColor: Record<string, string> = {
@@ -60,7 +46,7 @@ export function useSchedule(channelId: MaybeRefOrGetter<string>) {
     }
   }
 
-  async function createEpisode(body: EpisodeBody) {
+  async function createEpisode(body: Omit<EpisodeBody, '$schema'>) {
     const id = toValue(channelId)
     const res = await api(`/channels/${id}/episodes`).post(body)
     if (!res.ok) throw new Error(`${res.status}`)
@@ -68,7 +54,7 @@ export function useSchedule(channelId: MaybeRefOrGetter<string>) {
     episodes.value.push(ep)
   }
 
-  async function updateEpisode(episodeId: string, body: Partial<EpisodeBody>) {
+  async function updateEpisode(episodeId: string, body: Partial<Omit<EpisodeBody, '$schema'>>) {
     const id = toValue(channelId)
     const res = await api(`/channels/${id}/episodes/${episodeId}`).put(body)
     if (!res.ok) throw new Error(`${res.status}`)
