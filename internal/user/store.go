@@ -71,6 +71,20 @@ func (s *Store) GetByEmail(ctx context.Context, email string) (User, string, err
 	return u, hash, nil
 }
 
+// ListByStation returns all users for a station.
+func (s *Store) ListByStation(ctx context.Context, stationID string) ([]User, error) {
+	rows, err := s.db.Query(ctx, `
+		select `+cols+`
+		from users
+		where station_id = $1::uuid
+		order by created_at asc
+	`, stationID)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByName[User])
+}
+
 // CheckPassword returns true if the plain-text password matches the stored hash.
 func CheckPassword(hash, password string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil

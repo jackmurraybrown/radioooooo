@@ -10,14 +10,17 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"radioooooo/internal/auth"
+	"radioooooo/internal/user"
 )
 
 type Handler struct {
-	store *Store
+	store  *Store
+	users  *user.Store
+	secret string
 }
 
-func NewHandler(store *Store) *Handler {
-	return &Handler{store: store}
+func NewHandler(store *Store, users *user.Store, secret string) *Handler {
+	return &Handler{store: store, users: users, secret: secret}
 }
 
 func (h *Handler) Register(api huma.API) {
@@ -25,7 +28,7 @@ func (h *Handler) Register(api huma.API) {
 		OperationID:   "create-station",
 		Method:        http.MethodPost,
 		Path:          "/stations",
-		Summary:       "Create a new station",
+		Summary:       "Create a station and admin user (signup)",
 		Tags:          []string{"Stations"},
 		DefaultStatus: http.StatusCreated,
 	}, h.create)
@@ -59,30 +62,29 @@ func (h *Handler) Register(api huma.API) {
 
 // --- types ---
 
-type createStationBody struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Slug   string `json:"slug"`
-	APIKey string `json:"apiKey" doc:"store securely — shown only once"`
-}
-
 type createInput struct {
 	Body struct {
-		Name string `json:"name" minLength:"1" maxLength:"100" doc:"display name of the station"`
-		Slug string `json:"slug" minLength:"1" maxLength:"50"  pattern:"^[a-z0-9-]+$" doc:"url-safe identifier, e.g. 'my-station'"`
+		Name     string `json:"name"     minLength:"1" maxLength:"100" doc:"display name of the station"`
+		Slug     string `json:"slug"     minLength:"1" maxLength:"50"  pattern:"^[a-z0-9-]+$" doc:"url-safe identifier"`
+		Email    string `json:"email"    format:"email"                doc:"admin user email"`
+		Password string `json:"password" minLength:"8"                 doc:"admin user password"`
 	}
 }
 
 type createOutput struct {
-	Body createStationBody
-}
-
-type stationListBody struct {
-	Stations []Station `json:"stations"`
+	Body struct {
+		Station      Station `json:"station"`
+		APIKey       string  `json:"apiKey"       doc:"store securely — shown only once"`
+		AccessToken  string  `json:"accessToken"`
+		RefreshToken string  `json:"refreshToken"`
+		TokenType    string  `json:"tokenType"`
+	}
 }
 
 type listOutput struct {
-	Body stationListBody
+	Body struct {
+		Stations []Station `json:"stations"`
+	}
 }
 
 type getInput struct {
@@ -103,7 +105,6 @@ func (h *Handler) create(ctx context.Context, input *createInput) (*createOutput
 	st, err := h.store.Create(ctx, input.Body.Name, input.Body.Slug)
 	if err != nil {
 		var pgErr *pgconn.PgError
-		// 23505 is postgres's unique_violation code
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return nil, huma.Error409Conflict("slug already taken")
 		}
@@ -111,18 +112,41 @@ func (h *Handler) create(ctx context.Context, input *createInput) (*createOutput
 		return nil, huma.Error500InternalServerError("internal error")
 	}
 
-	key, err := h.store.CreateAPIKey(ctx, st.ID)
+	u, err := h.users.Create(ctx, st.ID, input.Body.Email, input.Body.Password)
 	if err != nil {
-		slog.Error("failed to create api key", "error", err, "station_id", st.ID)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, huma.Error409Conflict("email already in use")
+		}
+		slog.Error("failed to create admin user", "error", err)
 		return nil, huma.Error500InternalServerError("internal error")
 	}
 
-	return &createOutput{Body: createStationBody{
-		ID:     st.ID,
-		Name:   st.Name,
-		Slug:   st.Slug,
-		APIKey: key,
-	}}, nil
+	apiKey, err := h.store.CreateAPIKey(ctx, st.ID)
+	if err != nil {
+		slog.Error("failed to create api key", "error", err)
+		return nil, huma.Error500InternalServerError("internal error")
+	}
+
+	accessToken, err := auth.IssueAccessToken(h.secret, u.ID, st.ID)
+	if err != nil {
+		slog.Error("failed to issue access token", "error", err)
+		return nil, huma.Error500InternalServerError("internal error")
+	}
+
+	refreshToken, err := h.users.CreateRefreshToken(ctx, u.ID)
+	if err != nil {
+		slog.Error("failed to create refresh token", "error", err)
+		return nil, huma.Error500InternalServerError("internal error")
+	}
+
+	out := &createOutput{}
+	out.Body.Station = st
+	out.Body.APIKey = apiKey
+	out.Body.AccessToken = accessToken
+	out.Body.RefreshToken = refreshToken
+	out.Body.TokenType = "Bearer"
+	return out, nil
 }
 
 func (h *Handler) list(ctx context.Context, _ *struct{}) (*listOutput, error) {
@@ -153,7 +177,6 @@ func (h *Handler) delete(ctx context.Context, input *deleteInput) (*struct{}, er
 	if !ok || authedID != input.ID {
 		return nil, huma.Error403Forbidden("forbidden")
 	}
-
 	if err := h.store.Delete(ctx, input.ID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, huma.Error404NotFound("station not found")

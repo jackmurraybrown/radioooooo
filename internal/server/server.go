@@ -15,6 +15,7 @@ import (
 	"radioooooo/internal/channel"
 	"radioooooo/internal/config"
 	"radioooooo/internal/episode"
+	"radioooooo/internal/login"
 	"radioooooo/internal/media"
 	"radioooooo/internal/playlist"
 	"radioooooo/internal/station"
@@ -61,8 +62,9 @@ func New(cfg *config.Config, db *pgxpool.Pool) *Server {
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
-	auth.NewHandler(userStore, cfg.JWTSecret).Register(api)
-	station.NewHandler(stationStore).Register(api)
+	login.NewHandler(userStore, cfg.JWTSecret).Register(api)
+	station.NewHandler(stationStore, userStore, cfg.JWTSecret).Register(api)
+	user.NewHandler(userStore).Register(api)
 	channel.NewHandler(channelStore).Register(api)
 	episode.NewHandler(episodeStore).Register(api)
 	media.NewHandler(mediaStore).Register(api)

@@ -1,4 +1,4 @@
-package auth
+package login
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
+	"radioooooo/internal/auth"
 	"radioooooo/internal/user"
 )
 
@@ -91,7 +92,7 @@ func (h *Handler) login(ctx context.Context, input *loginInput) (*tokenOutput, e
 	if !user.CheckPassword(hash, input.Body.Password) {
 		return nil, huma.Error401Unauthorized("invalid credentials")
 	}
-	accessToken, err := IssueAccessToken(h.secret, u.ID, u.StationID)
+	accessToken, err := auth.IssueAccessToken(h.secret, u.ID, u.StationID)
 	if err != nil {
 		slog.Error("login: issue access token", "error", err)
 		return nil, huma.Error500InternalServerError("internal error")
@@ -117,7 +118,7 @@ func (h *Handler) refresh(ctx context.Context, input *refreshInput) (*tokenOutpu
 		slog.Error("refresh: rotate token", "error", err)
 		return nil, huma.Error500InternalServerError("internal error")
 	}
-	accessToken, err := IssueAccessToken(h.secret, u.ID, u.StationID)
+	accessToken, err := auth.IssueAccessToken(h.secret, u.ID, u.StationID)
 	if err != nil {
 		slog.Error("refresh: issue access token", "error", err)
 		return nil, huma.Error500InternalServerError("internal error")
