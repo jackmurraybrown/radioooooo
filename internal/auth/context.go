@@ -17,7 +17,10 @@ import "context"
 
 type contextKey string
 
-const stationIDKey contextKey = "stationID"
+const (
+	stationIDKey contextKey = "stationID"
+	userIDKey    contextKey = "userID"
+)
 
 // WithStationID returns a new context carrying the authenticated station ID.
 func WithStationID(ctx context.Context, id string) context.Context {
@@ -25,9 +28,19 @@ func WithStationID(ctx context.Context, id string) context.Context {
 }
 
 // StationIDFromContext returns the authenticated station ID and whether one was set.
-// handlers use the bool to distinguish unauthenticated requests (return 403) from
-// authenticated ones.
 func StationIDFromContext(ctx context.Context) (string, bool) {
 	id, ok := ctx.Value(stationIDKey).(string)
+	return id, ok
+}
+
+// WithUserID returns a new context carrying the authenticated user ID.
+func WithUserID(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, userIDKey, id)
+}
+
+// UserIDFromContext returns the authenticated user ID and whether one was set.
+// only present for JWT auth — api key requests have no associated user.
+func UserIDFromContext(ctx context.Context) (string, bool) {
+	id, ok := ctx.Value(userIDKey).(string)
 	return id, ok
 }

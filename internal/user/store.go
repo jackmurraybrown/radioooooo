@@ -71,6 +71,49 @@ func (s *Store) GetByEmail(ctx context.Context, email string) (User, string, err
 	return u, hash, nil
 }
 
+// GetByID returns a user by ID scoped to a station.
+func (s *Store) GetByID(ctx context.Context, id, stationID string) (User, error) {
+	rows, err := s.db.Query(ctx, `
+		select `+cols+`
+		from users
+		where id = $1::uuid and station_id = $2::uuid
+	`, id, stationID)
+	if err != nil {
+		return User{}, err
+	}
+	return pgx.CollectOneRow(rows, pgx.RowToStructByName[User])
+}
+
+// UpdatePassword verifies the current password then sets a new bcrypt hash.
+// returns pgx.ErrNoRows if the user is not found.
+func (s *Store) UpdatePassword(ctx context.Context, id, stationID, current, next string) error {
+	type row struct {
+		PasswordHash string `db:"password_hash"`
+	}
+	rows, err := s.db.Query(ctx, `
+		select password_hash from users where id = $1::uuid and station_id = $2::uuid
+	`, id, stationID)
+	if err != nil {
+		return err
+	}
+	r, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[row])
+	if err != nil {
+		return err
+	}
+	if !CheckPassword(r.PasswordHash, current) {
+		return errWrongPassword
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(next), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(ctx, `
+		update users set password_hash = $3, updated_at = now()
+		where id = $1::uuid and station_id = $2::uuid
+	`, id, stationID, string(hash))
+	return err
+}
+
 // ListByStation returns all users for a station.
 func (s *Store) ListByStation(ctx context.Context, stationID string) ([]User, error) {
 	rows, err := s.db.Query(ctx, `

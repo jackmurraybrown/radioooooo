@@ -1,6 +1,11 @@
 package user
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+var errWrongPassword = errors.New("current password is incorrect")
 
 // --- types ˚₊✧ ---
 

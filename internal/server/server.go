@@ -85,9 +85,14 @@ func authMiddleware(store *station.Store, jwtSecret string) func(http.Handler) h
 			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 			if token != "" {
 				if claims, err := auth.ParseAccessToken(jwtSecret, token); err == nil {
+					ctx := r.Context()
 					if stationID, ok := claims["station_id"].(string); ok && stationID != "" {
-						r = r.WithContext(auth.WithStationID(r.Context(), stationID))
+						ctx = auth.WithStationID(ctx, stationID)
 					}
+					if userID, ok := claims["sub"].(string); ok && userID != "" {
+						ctx = auth.WithUserID(ctx, userID)
+					}
+					r = r.WithContext(ctx)
 				} else if stationID, err := store.VerifyAPIKey(r.Context(), token); err == nil {
 					r = r.WithContext(auth.WithStationID(r.Context(), stationID))
 				}

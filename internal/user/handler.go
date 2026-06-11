@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"radioooooo/internal/auth"
 )
@@ -38,6 +39,24 @@ func (h *Handler) Register(api huma.API) {
 		Tags:        []string{"Users"},
 		Security:    []map[string][]string{{"bearerAuth": {}}},
 	}, h.list)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "get-me",
+		Method:      http.MethodGet,
+		Path:        "/users/me",
+		Summary:     "Get the authenticated user",
+		Tags:        []string{"Users"},
+		Security:    []map[string][]string{{"bearerAuth": {}}},
+	}, h.me)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "change-password",
+		Method:      http.MethodPut,
+		Path:        "/users/me/password",
+		Summary:     "Change password",
+		Tags:        []string{"Users"},
+		Security:    []map[string][]string{{"bearerAuth": {}}},
+	}, h.changePassword)
 }
 
 // --- types ˚₊✧ ---
@@ -46,6 +65,13 @@ type createInput struct {
 	Body struct {
 		Email    string `json:"email"    format:"email"`
 		Password string `json:"password" minLength:"8"`
+	}
+}
+
+type changePasswordInput struct {
+	Body struct {
+		CurrentPassword string `json:"currentPassword" minLength:"1"`
+		NewPassword     string `json:"newPassword"     minLength:"8"`
 	}
 }
 
@@ -76,6 +102,43 @@ func (h *Handler) create(ctx context.Context, input *createInput) (*userOutput, 
 		return nil, huma.Error500InternalServerError("internal error")
 	}
 	return &userOutput{Body: u}, nil
+}
+
+func (h *Handler) me(ctx context.Context, _ *struct{}) (*userOutput, error) {
+	userID, ok := auth.UserIDFromContext(ctx)
+	if !ok {
+		return nil, huma.Error403Forbidden("forbidden")
+	}
+	stationID, _ := auth.StationIDFromContext(ctx)
+	u, err := h.store.GetByID(ctx, userID, stationID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, huma.Error404NotFound("user not found")
+		}
+		slog.Error("failed to get user", "error", err)
+		return nil, huma.Error500InternalServerError("internal error")
+	}
+	return &userOutput{Body: u}, nil
+}
+
+func (h *Handler) changePassword(ctx context.Context, input *changePasswordInput) (*struct{}, error) {
+	userID, ok := auth.UserIDFromContext(ctx)
+	if !ok {
+		return nil, huma.Error403Forbidden("forbidden")
+	}
+	stationID, _ := auth.StationIDFromContext(ctx)
+	err := h.store.UpdatePassword(ctx, userID, stationID, input.Body.CurrentPassword, input.Body.NewPassword)
+	if err != nil {
+		if errors.Is(err, errWrongPassword) {
+			return nil, huma.Error422UnprocessableEntity("current password is incorrect")
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, huma.Error404NotFound("user not found")
+		}
+		slog.Error("failed to update password", "error", err)
+		return nil, huma.Error500InternalServerError("internal error")
+	}
+	return nil, nil
 }
 
 func (h *Handler) list(ctx context.Context, _ *struct{}) (*listOutput, error) {
