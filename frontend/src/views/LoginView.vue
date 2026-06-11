@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// ✦ shell — routes render here
+// hello hello
 </script>
 
 <template>
-  <RouterView />
+  <main>login</main>
 </template>
