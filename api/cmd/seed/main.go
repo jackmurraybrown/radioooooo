@@ -1,0 +1,298 @@
+// ⋆˙⟡ ⋆.˚ ⊹₊⟡ seed — dev database seeder using the store layer
+// structured so helpers can be lifted straight into store tests later.
+package main
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"math/rand"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/brianvoe/gofakeit/v6"
+	"radioooooo/internal/channel"
+	"radioooooo/internal/database"
+	"radioooooo/internal/episode"
+	"radioooooo/internal/media"
+	"radioooooo/internal/station"
+	"radioooooo/internal/user"
+)
+
+// rng is seeded for reproducible index picks ٩(^ᗜ^ )و
+var rng = rand.New(rand.NewSource(42))
+
+var genres = []string{
+	"house", "techno", "jungle", "drum & bass", "ambient", "jazz",
+	"soul", "afrobeat", "reggae", "experimental", "club", "grime",
+	"footwork", "dub", "electro",
+}
+
+var showTemplates = []string{
+	"%s's %s session",
+	"%s frequencies",
+	"late night w/ %s",
+	"%s radio",
+	"the %s hour",
+	"%s & friends",
+	"%s presents",
+	"club %s w/ %s",
+	"%s selections",
+	"deep %s w/ %s",
+	"%s transmissions",
+	"the %s show",
+}
+
+func showName() string {
+	tmpl := showTemplates[rng.Intn(len(showTemplates))]
+	genre := genres[rng.Intn(len(genres))]
+	name := strings.ToLower(gofakeit.FirstName() + " " + gofakeit.LastName())
+	if strings.Count(tmpl, "%s") == 2 {
+		return fmt.Sprintf(tmpl, genre, name)
+	}
+	if rng.Intn(2) == 0 {
+		return fmt.Sprintf(tmpl, name)
+	}
+	return fmt.Sprintf(tmpl, genre)
+}
+
+func trackTitle() string {
+	genre := genres[rng.Intn(len(genres))]
+	artist := gofakeit.FirstName() + " " + gofakeit.LastName()
+	tmpls := []string{
+		"%s - %s ep",
+		"%s / %s",
+		"%s (%s edit)",
+		"%s [%s remix]",
+		"night %s (%s version)",
+		"%s on %s",
+	}
+	return fmt.Sprintf(tmpls[rng.Intn(len(tmpls))], artist, genre)
+}
+
+// --- store helpers — portable into test files ✮ ⋆ ˚｡𖦹 ---
+
+func seedStation(ctx context.Context, store *station.Store) (station.Station, error) {
+	all, err := store.List(ctx)
+	if err != nil {
+		return station.Station{}, err
+	}
+	for _, s := range all {
+		if s.Slug == "radiooo" {
+			slog.Info("station already exists, skipping")
+			return s, nil
+		}
+	}
+	return store.Create(ctx, "radiooo", "radiooo")
+}
+
+func seedUser(ctx context.Context, store *user.Store, stationID string) error {
+	u, _, err := store.GetByEmail(ctx, "admin@radiooo.fm")
+	if err == nil {
+		slog.Info("user already exists, skipping", "id", u.ID)
+		return nil
+	}
+	_, err = store.Create(ctx, stationID, "admin@radiooo.fm", "password")
+	return err
+}
+
+func seedChannel(ctx context.Context, store *channel.Store, stationID string) (channel.Channel, error) {
+	all, err := store.List(ctx, stationID)
+	if err != nil {
+		return channel.Channel{}, err
+	}
+	for _, ch := range all {
+		if ch.Slug == "main" {
+			slog.Info("channel already exists, skipping")
+			return ch, nil
+		}
+	}
+	return store.Create(ctx, stationID, "main", "main")
+}
+
+func seedMedia(ctx context.Context, ms *media.Store, stationID string) ([]string, error) {
+	// check if already seeded — skip to avoid duplicates on re-run . ݁₊ ✶. ݁
+	existing, err := ms.List(ctx, stationID)
+	if err != nil {
+		return nil, err
+	}
+	if len(existing) > 0 {
+		ids := make([]string, len(existing))
+		for i, m := range existing {
+			ids[i] = m.ID
+		}
+		slog.Info("media already seeded, skipping", "count", len(ids))
+		return ids, nil
+	}
+
+	ids := make([]string, 0, 20)
+	for range 20 {
+		title := trackTitle()
+		artist := gofakeit.FirstName() + " " + gofakeit.LastName()
+		format := media.FormatMP3
+		durationSec := 180 + rng.Intn(300) // 3–8 min
+		sizeBytes := int64(durationSec) * 32 * 1024
+
+		m, err := ms.Create(ctx, media.CreateParams{
+			StationID:     stationID,
+			Title:         title,
+			Artist:        &artist,
+			FileFormat:    &format,
+			FileSizeBytes: &sizeBytes,
+			SourceAdapter: "local",
+			SourceRef:     fmt.Sprintf("media/%s.mp3", gofakeit.UUID()),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		// flip to ready with a realistic duration
+		if err := ms.UpdateStatus(ctx, m.ID, stationID, media.DownloadStatusReady, &durationSec); err != nil {
+			return nil, err
+		}
+		ids = append(ids, m.ID)
+	}
+	return ids, nil
+}
+
+// episode source options ⊹ ࣪ ˖
+var epSources = []struct {
+	epType  string
+	adapter string
+	ref     string // empty = use a media id
+}{
+	{"recorded", "media", ""},
+	{"recorded", "media", ""},
+	{"recorded", "media", ""},
+	{"live", "icecast", "main"},
+	{"external", "external", "https://stream.example.com/live"},
+}
+
+func seedSchedule(
+	ctx context.Context,
+	store *episode.Store,
+	stationID, channelID string,
+	mediaIDs []string,
+) (int, error) {
+	// monday of this week, midnight UTC ⋆˙⟡
+	now := time.Now().UTC()
+	weekday := int(now.Weekday())
+	if weekday == 0 {
+		weekday = 7
+	}
+	weekStart := time.Date(now.Year(), now.Month(), now.Day()-weekday+1, 0, 0, 0, 0, time.UTC)
+
+	count := 0
+	for week := range 13 {
+		for day := range 7 {
+			dayStart := weekStart.Add(time.Duration(week*7+day) * 24 * time.Hour)
+
+			startHour := 10 + rng.Intn(3)
+			cur := dayStart.Add(time.Duration(startHour) * time.Hour)
+
+			for range 3 + rng.Intn(3) {
+				durationH := time.Duration(1+rng.Intn(3)) * time.Hour
+				end := cur.Add(durationH)
+
+				if end.After(dayStart.Add(26 * time.Hour)) {
+					break
+				}
+
+				src := epSources[rng.Intn(len(epSources))]
+				ref := src.ref
+				if src.epType == "recorded" && len(mediaIDs) > 0 {
+					ref = mediaIDs[rng.Intn(len(mediaIDs))]
+				}
+
+				_, err := store.Create(ctx, episode.CreateParams{
+					ChannelID:     channelID,
+					StationID:     stationID,
+					Title:         showName(),
+					StartTime:     cur,
+					EndTime:       end,
+					Type:          src.epType,
+					SourceAdapter: src.adapter,
+					SourceRef:     ref,
+				})
+				if err != nil {
+					return count, err
+				}
+				count++
+
+				cur = end.Add(time.Duration(30+rng.Intn(60)) * time.Minute)
+			}
+		}
+	}
+	return count, nil
+}
+
+func run(ctx context.Context) error {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		return fmt.Errorf("DATABASE_URL not set")
+	}
+
+	if err := database.Migrate(dsn); err != nil {
+		return fmt.Errorf("migrate: %w", err)
+	}
+
+	db, err := database.Connect(ctx, dsn)
+	if err != nil {
+		return fmt.Errorf("connect: %w", err)
+	}
+	defer db.Close()
+
+	gofakeit.Seed(42) // ✮⋆‧°—°‧⋆✮ reproducible names
+
+	stations := station.NewStore(db)
+	users := user.NewStore(db)
+	channels := channel.NewStore(db)
+	media := media.NewStore(db)
+	episodes := episode.NewStore(db)
+
+	st, err := seedStation(ctx, stations)
+	if err != nil {
+		return fmt.Errorf("station: %w", err)
+	}
+	slog.Info("station", "id", st.ID, "slug", st.Slug)
+
+	if err := seedUser(ctx, users, st.ID); err != nil {
+		return fmt.Errorf("user: %w", err)
+	}
+	slog.Info("user created", "email", "admin@radiooo.fm", "password", "password")
+
+	ch, err := seedChannel(ctx, channels, st.ID)
+	if err != nil {
+		return fmt.Errorf("channel: %w", err)
+	}
+	slog.Info("channel", "id", ch.ID, "slug", ch.Slug)
+
+	mediaIDs, err := seedMedia(ctx, media, st.ID)
+	if err != nil {
+		return fmt.Errorf("media: %w", err)
+	}
+	slog.Info("media", "count", len(mediaIDs))
+
+	// wipe existing episodes for this channel then re-seed ⊹ ₊
+	if _, err := db.Exec(ctx, `delete from episodes where channel_id = $1::uuid`, ch.ID); err != nil {
+		return fmt.Errorf("clearing episodes: %w", err)
+	}
+
+	n, err := seedSchedule(ctx, episodes, st.ID, ch.ID, mediaIDs)
+	if err != nil {
+		return fmt.Errorf("schedule: %w", err)
+	}
+	slog.Info("episodes", "count", n)
+
+	return nil
+}
+
+func main() {
+	ctx := context.Background()
+	if err := run(ctx); err != nil {
+		slog.Error("seed failed", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("seed complete")
+}

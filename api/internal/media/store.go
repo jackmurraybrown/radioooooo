@@ -107,6 +107,16 @@ func (s *Store) Update(ctx context.Context, id, stationID string, p UpdateParams
 	return pgx.CollectOneRow(rows, pgx.RowToStructByName[Media])
 }
 
+// UpdateStatus sets the download_status (and optionally duration) for a media item.
+// ✮ ⋆ ˚｡𖦹 used by the ingest pipeline and seed tooling.
+func (s *Store) UpdateStatus(ctx context.Context, id, stationID, status string, duration *int) error {
+	_, err := s.db.Exec(ctx, `
+		update media set download_status=$3, duration=coalesce($4, duration), updated_at=now()
+		where id=$1::uuid and station_id=$2::uuid
+	`, id, stationID, status, duration)
+	return err
+}
+
 // Delete returns pgx.ErrNoRows if the item is not found or belongs to a different station.
 func (s *Store) Delete(ctx context.Context, id, stationID string) error {
 	result, err := s.db.Exec(ctx, `
