@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // ✮ ⋆ ˚｡𖦹 authenticated — sidebar + page content
 import AppSidebar from './AppSidebar.vue'
+import ToastContainer from './ToastContainer.vue'
 </script>
 
 <template>
@@ -9,6 +10,7 @@ import AppSidebar from './AppSidebar.vue'
     <main class="content">
       <RouterView />
     </main>
+    <ToastContainer />
   </div>
 </template>
 

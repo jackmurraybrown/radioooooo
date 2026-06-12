@@ -4,6 +4,7 @@ import { ref, onMounted } from 'vue'
 import ScheduleCalendar from '@/components/ScheduleCalendar.vue'
 import EpisodeDialog from '@/components/EpisodeDialog.vue'
 import { useSchedule } from '@/composables/useSchedule'
+import { useToast } from '@/composables/useToast'
 import { api } from '@/api/client'
 import type { Channel } from '@/api/types'
 import type { EpisodeBody } from '@/api/types'
@@ -13,6 +14,7 @@ const activeChannelId = ref('')
 const dialogEl = ref<InstanceType<typeof EpisodeDialog>>()
 
 const { episodes, events, createEpisode, updateEpisode, deleteEpisode } = useSchedule(activeChannelId)
+const toast = useToast()
 
 async function loadChannels() {
   const res = await api('/channels').get()
@@ -34,19 +36,21 @@ function onEventClick(id: string) {
 }
 
 async function onEventDrop(id: string, start: Date, end: Date) {
-  await updateEpisode(id, { startTime: start.toISOString(), endTime: end.toISOString() })
+  try {
+    await updateEpisode(id, { startTime: start.toISOString(), endTime: end.toISOString() })
+  } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to move episode') }
 }
 
 async function onCreate(body: Omit<EpisodeBody, '$schema'>) {
-  await createEpisode(body)
+  try { await createEpisode(body) } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to create episode') }
 }
 
 async function onUpdate(id: string, body: Omit<EpisodeBody, '$schema'>) {
-  await updateEpisode(id, body)
+  try { await updateEpisode(id, body) } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to update episode') }
 }
 
 async function onDelete(id: string) {
-  await deleteEpisode(id)
+  try { await deleteEpisode(id) } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to delete episode') }
 }
 
 onMounted(loadChannels)

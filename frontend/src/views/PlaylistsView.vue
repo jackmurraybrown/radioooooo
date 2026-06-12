@@ -4,6 +4,7 @@ import { ref, onMounted } from 'vue'
 import PlaylistDialog from '@/components/PlaylistDialog.vue'
 import { usePlaylists } from '@/composables/usePlaylists'
 import { useMedia } from '@/composables/useMedia'
+import { useToast } from '@/composables/useToast'
 import type { Playlist, PlaylistCreateBody, PlaylistUpdateBody } from '@/api/types'
 
 const dialogEl = ref<InstanceType<typeof PlaylistDialog>>()
@@ -17,6 +18,7 @@ const {
 } = usePlaylists()
 
 const { media, fetchMedia } = useMedia()
+const toast = useToast()
 
 async function selectPlaylist(pl: Playlist) {
   active.value = pl
@@ -25,31 +27,41 @@ async function selectPlaylist(pl: Playlist) {
 }
 
 async function onCreate(body: Omit<PlaylistCreateBody, '$schema'>) {
-  const pl = await createPlaylist(body)
-  await selectPlaylist(pl)
+  try {
+    const pl = await createPlaylist(body)
+    await selectPlaylist(pl)
+  } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to create playlist') }
 }
 
 async function onUpdate(id: string, body: Omit<PlaylistUpdateBody, '$schema'>) {
-  await updatePlaylist(id, body)
-  if (active.value?.id === id) {
-    active.value = playlists.value.find(p => p.id === id) ?? null
-  }
+  try {
+    await updatePlaylist(id, body)
+    if (active.value?.id === id) {
+      active.value = playlists.value.find(p => p.id === id) ?? null
+    }
+  } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to update playlist') }
 }
 
 async function onDelete(id: string) {
-  await deletePlaylist(id)
-  if (active.value?.id === id) active.value = null
+  try {
+    await deletePlaylist(id)
+    if (active.value?.id === id) active.value = null
+  } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to delete playlist') }
 }
 
 async function onAddItem() {
   if (!active.value || !addMediaId.value) return
-  await addItem(active.value.id, addMediaId.value)
-  addMediaId.value = ''
+  try {
+    await addItem(active.value.id, addMediaId.value)
+    addMediaId.value = ''
+  } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to add track') }
 }
 
 async function onRemoveItem(itemId: string) {
   if (!active.value) return
-  await removeItem(active.value.id, itemId)
+  try {
+    await removeItem(active.value.id, itemId)
+  } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to remove track') }
 }
 
 function formatDuration(seconds?: number | null): string {

@@ -3,10 +3,12 @@
 import { ref, onMounted } from 'vue'
 import MediaDialog from '@/components/MediaDialog.vue'
 import { useMedia } from '@/composables/useMedia'
+import { useToast } from '@/composables/useToast'
 import type { MediaCreateBody, MediaUpdateBody } from '@/api/types'
 
 const dialogEl = ref<InstanceType<typeof MediaDialog>>()
 const { media, loading, error, fetchMedia, createMedia, updateMedia, deleteMedia } = useMedia()
+const toast = useToast()
 
 function formatBytes(bytes?: number | null): string {
   if (!bytes) return '—'
@@ -22,15 +24,15 @@ function formatDuration(seconds?: number | null): string {
 }
 
 async function onCreate(body: Omit<MediaCreateBody, '$schema'>) {
-  await createMedia(body)
+  try { await createMedia(body) } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to create media') }
 }
 
 async function onUpdate(id: string, body: Omit<MediaUpdateBody, '$schema'>) {
-  await updateMedia(id, body)
+  try { await updateMedia(id, body) } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to update media') }
 }
 
 async function onDelete(id: string) {
-  await deleteMedia(id)
+  try { await deleteMedia(id) } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to delete media') }
 }
 
 onMounted(fetchMedia)

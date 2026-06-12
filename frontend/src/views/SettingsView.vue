@@ -4,13 +4,14 @@ import { ref, reactive, onMounted } from 'vue'
 import * as v from 'valibot'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
 import type { Station } from '@/api/types'
 
 const auth = useAuthStore()
+const toast = useToast()
 const station = ref<Station | null>(null)
 const loading = ref(true)
 const saving = ref(false)
-const saved = ref(false)
 const fetchError = ref<string | null>(null)
 
 const schema = v.object({
@@ -62,7 +63,6 @@ async function save() {
     return
   }
   saving.value = true
-  saved.value  = false
   try {
     const res = await api(`/stations/${auth.stationId}`).put({
       name:    form.name,
@@ -72,10 +72,9 @@ async function save() {
     if (!res.ok) throw new Error(`${res.status}`)
     station.value = await res.json()
     populate(station.value!)
-    saved.value = true
-    setTimeout(() => { saved.value = false }, 2500)
+    toast.success('saved')
   } catch {
-    fetchError.value = 'failed to save changes'
+    toast.error('failed to save changes')
   } finally {
     saving.value = false
   }
@@ -131,7 +130,6 @@ onMounted(fetchStation)
       </section>
 
       <div class="form-footer">
-        <span v-if="saved" class="saved-msg">saved</span>
         <button type="submit" class="primary" :disabled="saving">
           {{ saving ? 'saving…' : 'save changes' }}
         </button>
@@ -236,8 +234,6 @@ input.error { border-color: #dc2626; }
   justify-content: flex-end;
   gap: 0.75rem;
 }
-
-.saved-msg { font-size: 0.85rem; color: #16a34a; }
 
 button.primary {
   padding: 0.45rem 1.25rem;
