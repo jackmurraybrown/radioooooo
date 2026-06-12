@@ -264,7 +264,8 @@ export interface paths {
         };
         /** Get a station by ID */
         get: operations["get-station"];
-        put?: never;
+        /** Update station profile */
+        put: operations["update-station"];
         post?: never;
         /** Delete a station */
         delete: operations["delete-station"];
@@ -730,6 +731,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             id: string;
+            logoUrl?: string;
             name: string;
             slug: string;
             /** Format: date-time */
@@ -743,6 +745,18 @@ export interface components {
              */
             readonly $schema?: string;
             stations: components["schemas"]["Station"][] | null;
+        };
+        StationUpdateBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/StationUpdateBody.json
+             */
+            readonly $schema?: string;
+            /** @description url to station logo image */
+            logoUrl?: string;
+            name: string;
+            slug: string;
         };
         TokenOutputBody: {
             /**
@@ -1657,6 +1671,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Station"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "update-station": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StationUpdateBody"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
