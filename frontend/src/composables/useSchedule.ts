@@ -73,5 +73,5 @@ export function useSchedule(channelId: MaybeRefOrGetter<string>) {
   // ⊹ ࣪ ˖ refetch whenever the channel changes
   watch(() => toValue(channelId), (id) => { if (id) fetchEpisodes() })
 
-  return { events, loading, error, fetchEpisodes, createEpisode, updateEpisode, deleteEpisode }
+  return { episodes, events, loading, error, fetchEpisodes, createEpisode, updateEpisode, deleteEpisode }
 }
