@@ -10,17 +10,19 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"radioooooo/internal/auth"
+	"radioooooo/internal/channel"
 	"radioooooo/internal/user"
 )
 
 type Handler struct {
-	store  *Store
-	users  *user.Store
-	secret string
+	store    *Store
+	users    *user.Store
+	channels *channel.Store
+	secret   string
 }
 
-func NewHandler(store *Store, users *user.Store, secret string) *Handler {
-	return &Handler{store: store, users: users, secret: secret}
+func NewHandler(store *Store, users *user.Store, channels *channel.Store, secret string) *Handler {
+	return &Handler{store: store, users: users, channels: channels, secret: secret}
 }
 
 func (h *Handler) Register(api huma.API) {
@@ -135,6 +137,11 @@ func (h *Handler) create(ctx context.Context, input *createInput) (*createOutput
 			return nil, huma.Error409Conflict("slug already taken")
 		}
 		slog.Error("failed to create station", "error", err)
+		return nil, huma.Error500InternalServerError("internal error")
+	}
+
+	if _, err := h.channels.Create(ctx, st.ID, "main", "main"); err != nil {
+		slog.Error("failed to create default channel", "error", err)
 		return nil, huma.Error500InternalServerError("internal error")
 	}
 

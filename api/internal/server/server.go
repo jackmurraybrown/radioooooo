@@ -80,7 +80,7 @@ func New(cfg *config.Config, db *pgxpool.Pool) *Server {
 	})
 
 	login.NewHandler(userStore, cfg.JWTSecret).Register(api)
-	station.NewHandler(stationStore, userStore, cfg.JWTSecret).Register(api)
+	station.NewHandler(stationStore, userStore, channelStore, cfg.JWTSecret).Register(api)
 	user.NewHandler(userStore).Register(api)
 	channel.NewHandler(channelStore).Register(api)
 	episode.NewHandler(episodeStore).Register(api)
