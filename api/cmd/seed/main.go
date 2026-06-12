@@ -25,7 +25,7 @@ var rng = rand.New(rand.NewSource(42))
 
 var genres = []string{
 	"house", "techno", "jungle", "drum & bass", "ambient", "jazz",
-	"soul", "afrobeat", "reggae", "experimental", "club", "grime",
+	"soul", "gabber", "downtempo", "afrobeat", "reggaeton", "experimental", "club", "grime",
 	"footwork", "dub", "electro",
 }
 
