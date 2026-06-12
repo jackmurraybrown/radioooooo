@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
 	"radioooooo/internal/channel"
 	"radioooooo/internal/database"
 	"radioooooo/internal/episode"
@@ -87,13 +89,30 @@ func seedStation(ctx context.Context, store *station.Store) (station.Station, er
 	return store.Create(ctx, "radiooo", "radiooo")
 }
 
-func seedUser(ctx context.Context, store *user.Store, stationID string) error {
-	u, _, err := store.GetByEmail(ctx, "admin@radiooo.fm")
+func seedUser(ctx context.Context, db *pgxpool.Pool, store *user.Store, stationID string) error {
+	u, hash, err := store.GetByEmail(ctx, "admin@radiooo.fm")
 	if err == nil {
-		slog.Info("user already exists, skipping", "id", u.ID)
+		// user exists — reset password to "password" if it differs . ݁₊ ✶. ݁
+		if !user.CheckPassword(hash, "password") {
+			if err := resetPassword(ctx, db, u.ID, "password"); err != nil {
+				return err
+			}
+			slog.Info("user password reset", "id", u.ID)
+		} else {
+			slog.Info("user already exists, skipping", "id", u.ID)
+		}
 		return nil
 	}
 	_, err = store.Create(ctx, stationID, "admin@radiooo.fm", "password")
+	return err
+}
+
+func resetPassword(ctx context.Context, db *pgxpool.Pool, userID, password string) error {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(ctx, `update users set password_hash=$2 where id=$1::uuid`, userID, string(hash))
 	return err
 }
 
@@ -187,16 +206,15 @@ func seedSchedule(
 	for week := range 13 {
 		for day := range 7 {
 			dayStart := weekStart.Add(time.Duration(week*7+day) * 24 * time.Hour)
+			cur := dayStart.Add(10 * time.Hour) // 10:00 ⊹ ࣪ ˖
+			dayEnd := dayStart.Add(22 * time.Hour) // 22:00
 
-			startHour := 10 + rng.Intn(3)
-			cur := dayStart.Add(time.Duration(startHour) * time.Hour)
-
-			for range 3 + rng.Intn(3) {
+			for cur.Before(dayEnd) {
+				// 1-3h show, but cap so we don't run past 22:00
 				durationH := time.Duration(1+rng.Intn(3)) * time.Hour
 				end := cur.Add(durationH)
-
-				if end.After(dayStart.Add(26 * time.Hour)) {
-					break
+				if end.After(dayEnd) {
+					end = dayEnd
 				}
 
 				src := epSources[rng.Intn(len(epSources))]
@@ -219,8 +237,7 @@ func seedSchedule(
 					return count, err
 				}
 				count++
-
-				cur = end.Add(time.Duration(30+rng.Intn(60)) * time.Minute)
+				cur = end // ✶. ݁ no gap
 			}
 		}
 	}
@@ -257,7 +274,7 @@ func run(ctx context.Context) error {
 	}
 	slog.Info("station", "id", st.ID, "slug", st.Slug)
 
-	if err := seedUser(ctx, users, st.ID); err != nil {
+	if err := seedUser(ctx, db, users, st.ID); err != nil {
 		return fmt.Errorf("user: %w", err)
 	}
 	slog.Info("user created", "email", "admin@radiooo.fm", "password", "password")
