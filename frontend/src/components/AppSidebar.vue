@@ -1,8 +1,26 @@
 <script setup lang="ts">
-// ⊹ ࣪ ˖ sidebar nav
+// ⊹ ࣪ ˖ sidebar nav — logo + links
+import { ref, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
+import { api } from '@/api/client'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
+const auth = useAuthStore()
+
+const logoUrl = ref<string | null>(null)
+const stationName = ref('')
+
+async function loadStation() {
+  if (!auth.stationId) return
+  try {
+    const res = await api(`/stations/${auth.stationId}`).get()
+    if (!res.ok) return
+    const data = await res.json()
+    logoUrl.value   = data.logoUrl ?? null
+    stationName.value = data.name ?? ''
+  } catch {}
+}
 
 const links = [
   { name: 'schedule',  label: 'schedule',  to: '/schedule' },
@@ -10,11 +28,22 @@ const links = [
   { name: 'playlists', label: 'playlists', to: '/playlists' },
   { name: 'settings',  label: 'settings',  to: '/settings' },
 ]
+
+onMounted(loadStation)
 </script>
 
 <template>
   <nav class="sidebar">
-    <div class="sidebar-logo">radiooo</div>
+    <RouterLink to="/settings" class="sidebar-brand">
+      <img
+        v-if="logoUrl"
+        :src="logoUrl"
+        :alt="stationName"
+        class="station-logo"
+      />
+      <span v-else class="station-name">{{ stationName || 'radiooo' }}</span>
+    </RouterLink>
+
     <ul>
       <li v-for="link in links" :key="link.name">
         <RouterLink
@@ -39,11 +68,26 @@ const links = [
   flex-shrink: 0;
 }
 
-.sidebar-logo {
-  font-weight: 600;
-  font-size: 1.1rem;
+.sidebar-brand {
+  display: flex;
+  align-items: center;
   margin-bottom: 2rem;
   padding: 0 0.5rem;
+  text-decoration: none;
+  min-height: 40px;
+}
+
+.station-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.station-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #111827;
 }
 
 ul {

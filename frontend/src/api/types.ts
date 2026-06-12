@@ -13,5 +13,6 @@ export type Playlist           = S['Playlist']
 export type PlaylistItem       = S['PlaylistItem']
 export type PlaylistCreateBody = S['PlaylistCreateBody']
 export type PlaylistUpdateBody = S['PlaylistUpdateBody']
-export type Station = S['Station']
+// ⋆˙⟡ logoUrl added in migration 007 — extend until pnpm generate-types is re-run against the updated spec
+export type Station = S['Station'] & { logoUrl?: string | null }
 export type User = S['User']

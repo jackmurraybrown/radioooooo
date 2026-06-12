@@ -50,6 +50,15 @@ func (h *Handler) Register(api huma.API) {
 	}, h.get)
 
 	huma.Register(api, huma.Operation{
+		OperationID: "update-station",
+		Method:      http.MethodPut,
+		Path:        "/stations/{id}",
+		Summary:     "Update station profile",
+		Tags:        []string{"Stations"},
+		Security:    []map[string][]string{{"bearerAuth": {}}},
+	}, h.update)
+
+	huma.Register(api, huma.Operation{
 		OperationID:   "delete-station",
 		Method:        http.MethodDelete,
 		Path:          "/stations/{id}",
@@ -99,6 +108,17 @@ type getInput struct {
 
 type getOutput struct {
 	Body Station
+}
+
+type stationUpdateBody struct {
+	Name    string  `json:"name"              minLength:"1" maxLength:"100"`
+	Slug    string  `json:"slug"              minLength:"1" maxLength:"50" pattern:"^[a-z0-9-]+$"`
+	LogoURL *string `json:"logoUrl,omitempty" doc:"url to station logo image"`
+}
+
+type updateInput struct {
+	ID   string `path:"id"`
+	Body stationUpdateBody
 }
 
 type deleteInput struct {
@@ -173,6 +193,26 @@ func (h *Handler) get(ctx context.Context, input *getInput) (*getOutput, error) 
 			return nil, huma.Error404NotFound("station not found")
 		}
 		slog.Error("failed to get station", "error", err, "id", input.ID)
+		return nil, huma.Error500InternalServerError("internal error")
+	}
+	return &getOutput{Body: st}, nil
+}
+
+func (h *Handler) update(ctx context.Context, input *updateInput) (*getOutput, error) {
+	authedID, ok := auth.StationIDFromContext(ctx)
+	if !ok || authedID != input.ID {
+		return nil, huma.Error403Forbidden("forbidden")
+	}
+	st, err := h.store.Update(ctx, input.ID, UpdateParams{
+		Name:    input.Body.Name,
+		Slug:    input.Body.Slug,
+		LogoURL: input.Body.LogoURL,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, huma.Error404NotFound("station not found")
+		}
+		slog.Error("failed to update station", "error", err)
 		return nil, huma.Error500InternalServerError("internal error")
 	}
 	return &getOutput{Body: st}, nil

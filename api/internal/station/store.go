@@ -23,7 +23,7 @@ func (s *Store) Create(ctx context.Context, name, slug string) (Station, error) 
 	rows, err := s.db.Query(ctx, `
 		INSERT INTO stations (name, slug)
 		VALUES ($1, $2)
-		RETURNING id::text, name, slug, created_at, updated_at
+		RETURNING id::text, name, slug, logo_url, created_at, updated_at
 	`, name, slug)
 	if err != nil {
 		return Station{}, err
@@ -33,7 +33,7 @@ func (s *Store) Create(ctx context.Context, name, slug string) (Station, error) 
 
 func (s *Store) List(ctx context.Context) ([]Station, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id::text, name, slug, created_at, updated_at
+		SELECT id::text, name, slug, logo_url, created_at, updated_at
 		FROM stations
 		ORDER BY created_at DESC
 	`)
@@ -45,10 +45,29 @@ func (s *Store) List(ctx context.Context) ([]Station, error) {
 
 func (s *Store) Get(ctx context.Context, id string) (Station, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id::text, name, slug, created_at, updated_at
+		SELECT id::text, name, slug, logo_url, created_at, updated_at
 		FROM stations
 		WHERE id = $1::uuid
 	`, id)
+	if err != nil {
+		return Station{}, err
+	}
+	return pgx.CollectOneRow(rows, pgx.RowToStructByName[Station])
+}
+
+type UpdateParams struct {
+	Name    string
+	Slug    string
+	LogoURL *string
+}
+
+func (s *Store) Update(ctx context.Context, id string, p UpdateParams) (Station, error) {
+	rows, err := s.db.Query(ctx, `
+		UPDATE stations
+		SET name = $1, slug = $2, logo_url = $3, updated_at = now()
+		WHERE id = $4::uuid
+		RETURNING id::text, name, slug, logo_url, created_at, updated_at
+	`, p.Name, p.Slug, p.LogoURL, id)
 	if err != nil {
 		return Station{}, err
 	}

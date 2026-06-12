@@ -4,13 +4,26 @@ import { ref } from 'vue'
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
 // ✮ ⋆ ˚｡𖦹 auth state — single source of truth for tokens
+function decodeStationId(token: string): string | null {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return (payload.station_id as string) ?? null
+  } catch {
+    return null
+  }
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref<string | null>(localStorage.getItem('accessToken'))
   const refreshToken = ref<string | null>(localStorage.getItem('refreshToken'))
+  const stationId = ref<string | null>(
+    accessToken.value ? decodeStationId(accessToken.value) : null
+  )
 
   function set(access: string, refresh: string) {
     accessToken.value = access
     refreshToken.value = refresh
+    stationId.value = decodeStationId(access)
     localStorage.setItem('accessToken', access)
     localStorage.setItem('refreshToken', refresh)
   }
@@ -58,5 +71,5 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = () => !!accessToken.value
 
-  return { accessToken, refreshToken, set, clear, login, refresh, logout, isAuthenticated }
+  return { accessToken, refreshToken, stationId, set, clear, login, refresh, logout, isAuthenticated }
 })
