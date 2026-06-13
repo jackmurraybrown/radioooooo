@@ -36,8 +36,10 @@ function onEventClick(id: string) {
 }
 
 async function onEventDrop(id: string, start: Date, end: Date) {
+  const ep = episodes.value.find(e => e.id === id)
+  if (!ep) return
   try {
-    await updateEpisode(id, { startTime: start.toISOString(), endTime: end.toISOString() })
+    await updateEpisode(id, { ...ep, startTime: start.toISOString(), endTime: end.toISOString() })
   } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to move episode') }
 }
 

@@ -404,7 +404,8 @@ export interface components {
             /** Format: date-time */
             startTime: string;
             title: string;
-            type: string;
+            /** @enum {string} */
+            type: "live" | "recorded" | "external" | "playlist";
             /** Format: date-time */
             updatedAt: string;
         };
