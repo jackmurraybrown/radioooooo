@@ -24,12 +24,32 @@ services:
       db:
         condition: service_healthy
 
-  # liquidsoap and icecast are added in v0.3
-  # liquidsoap:
-  #   image: savonet/liquidsoap:2.3.0
-  #
-  # icecast:
-  #   image: ...
+  # ✮⋆‧°—°‧⋆✮ streaming stack — icecast + liquidsoap (v0.3)
+  icecast:
+    build:
+      context: ./streaming
+      dockerfile: Dockerfile.icecast
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "cat /proc/net/tcp6 | grep -q 1F40 || cat /proc/net/tcp | grep -q 1F40"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  liquidsoap:
+    image: savonet/liquidsoap:v2.4.4
+    volumes:
+      - ./streaming/radio.liq:/radio.liq:ro
+      - ./streaming/test-media:/media:ro
+    command: ["/radio.liq"]
+    ports:
+      - "1234:1234"   # telnet control — Go broadcast controller connects here
+    depends_on:
+      icecast:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:
