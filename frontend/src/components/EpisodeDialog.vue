@@ -1,8 +1,10 @@
 <script setup lang="ts">
 // ⋆˙⟡ ⋆.˚ episode create / edit — native <dialog> for free tab trapping + esc
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import * as v from 'valibot'
 import type { Episode, EpisodeBody } from '@/api/types'
+import { useMedia } from '@/composables/useMedia'
+import { usePlaylists } from '@/composables/usePlaylists'
 
 type EpisodeType = EpisodeBody['type']
 
@@ -15,6 +17,11 @@ const emit = defineEmits<{
 const dialogEl = ref<HTMLDialogElement>()
 const mode = ref<'create' | 'edit'>('create')
 const currentId = ref<string>('')
+
+// ✮ ⋆ ˚｡𖦹 prefetch media + playlists for dropdowns
+const { media, fetchMedia } = useMedia()
+const { playlists, fetchPlaylists } = usePlaylists()
+onMounted(() => { fetchMedia(); fetchPlaylists() })
 
 // ⊹ ࣪ ˖ sourceAdapter is fully determined by type
 const adapterForType: Record<EpisodeType, string> = {
@@ -173,7 +180,42 @@ defineExpose({ openCreate, openEdit, close })
 
         <div class="field">
           <label for="ep-ref">{{ refLabel[form.type] }}</label>
-          <input id="ep-ref" v-model="form.sourceRef" :class="{ error: errors.sourceRef }" />
+
+          <!-- ⊹ ₊ recorded — pick from media library -->
+          <select
+            v-if="form.type === 'recorded'"
+            id="ep-ref"
+            v-model="form.sourceRef"
+            :class="{ error: errors.sourceRef }"
+          >
+            <option value="" disabled>select a track…</option>
+            <option v-for="m in media" :key="m.id" :value="m.id">
+              {{ m.title }}{{ m.artist ? ` — ${m.artist}` : '' }}
+            </option>
+          </select>
+
+          <!-- ⋆˙⟡ playlist — pick from playlists -->
+          <select
+            v-else-if="form.type === 'playlist'"
+            id="ep-ref"
+            v-model="form.sourceRef"
+            :class="{ error: errors.sourceRef }"
+          >
+            <option value="" disabled>select a playlist…</option>
+            <option v-for="pl in playlists" :key="pl.id" :value="pl.id">
+              {{ pl.name }}
+            </option>
+          </select>
+
+          <!-- live / external — plain text -->
+          <input
+            v-else
+            id="ep-ref"
+            v-model="form.sourceRef"
+            :class="{ error: errors.sourceRef }"
+            :placeholder="form.type === 'live' ? 'e.g. main' : 'https://…'"
+          />
+
           <span v-if="errors.sourceRef" class="err">{{ errors.sourceRef }}</span>
         </div>
 

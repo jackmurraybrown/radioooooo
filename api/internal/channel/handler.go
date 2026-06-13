@@ -142,6 +142,14 @@ func (h *Handler) delete(ctx context.Context, input *idInput) (*struct{}, error)
 	if !ok {
 		return nil, huma.Error403Forbidden("forbidden")
 	}
+	channels, err := h.store.List(ctx, stationID)
+	if err != nil {
+		slog.Error("failed to list channels", "error", err)
+		return nil, huma.Error500InternalServerError("internal error")
+	}
+	if len(channels) <= 1 {
+		return nil, huma.Error409Conflict("cannot delete the last channel")
+	}
 	if err := h.store.Delete(ctx, input.ID, stationID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, huma.Error404NotFound("channel not found")

@@ -86,6 +86,8 @@ async function save() {
 const channels = ref<Channel[]>([])
 const channelsLoading = ref(false)
 const channelCreating = ref(false)
+const confirmDialogEl = ref<HTMLDialogElement>()
+const pendingDelete = ref<{ id: string; name: string } | null>(null)
 
 const channelSchema = v.object({
   name: v.pipe(v.string(), v.minLength(1, 'required'), v.maxLength(100)),
@@ -143,15 +145,27 @@ async function createChannel() {
   }
 }
 
-async function deleteChannel(id: string, name: string) {
-  if (!confirm(`delete channel "${name}"? this will remove all its episodes.`)) return
+function promptDelete(id: string, name: string) {
+  pendingDelete.value = { id, name }
+  confirmDialogEl.value?.showModal()
+}
+
+async function confirmDelete() {
+  if (!pendingDelete.value) return
+  const { id, name } = pendingDelete.value
+  confirmDialogEl.value?.close()
   try {
     const res = await api(`/channels/${id}`).delete()
-    if (!res.ok) throw new Error(`${res.status}`)
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new Error(body?.detail ?? `${res.status}`)
+    }
     channels.value = channels.value.filter(ch => ch.id !== id)
     toast.success(`channel "${name}" deleted`)
-  } catch {
-    toast.error('failed to delete channel')
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'failed to delete channel')
+  } finally {
+    pendingDelete.value = null
   }
 }
 
@@ -216,7 +230,12 @@ onMounted(() => {
           <li v-for="ch in channels" :key="ch.id">
             <span class="ch-name">{{ ch.name }}</span>
             <span class="ch-slug">{{ ch.slug }}</span>
-            <button class="delete-btn" @click="deleteChannel(ch.id, ch.name)" aria-label="delete channel">✕</button>
+            <button
+              v-if="channels.length > 1"
+              class="delete-btn"
+              @click="promptDelete(ch.id, ch.name)"
+              aria-label="delete channel"
+            >✕</button>
           </li>
         </ul>
         <p v-else class="empty-inline">no channels yet</p>
@@ -250,6 +269,15 @@ onMounted(() => {
       </section>
     </template>
   </div>
+
+  <!-- ⊹ ₊ ⟡ channel delete confirmation -->
+  <dialog ref="confirmDialogEl" class="confirm-dialog">
+    <p>delete <strong>{{ pendingDelete?.name }}</strong>? all its episodes will be removed.</p>
+    <div class="confirm-actions">
+      <button @click="confirmDialogEl?.close(); pendingDelete = null">cancel</button>
+      <button class="danger" @click="confirmDelete">delete</button>
+    </div>
+  </dialog>
 </template>
 
 <style scoped>
@@ -419,4 +447,35 @@ button.primary:disabled { opacity: 0.5; cursor: default; }
 
 .empty { font-size: 0.9rem; color: #9ca3af; }
 .error-msg { font-size: 0.9rem; color: #dc2626; }
+
+.confirm-dialog {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 1.5rem;
+  width: min(360px, 90vw);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+.confirm-dialog::backdrop { background: rgba(0,0,0,0.35); }
+
+.confirm-dialog p { margin: 0 0 1.25rem; font-size: 0.9rem; color: #374151; }
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+button.danger {
+  padding: 0.45rem 1.25rem;
+  border-radius: 6px;
+  border: none;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+button.danger:hover { background: #b91c1c; }
 </style>
