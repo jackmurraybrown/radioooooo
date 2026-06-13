@@ -1,19 +1,34 @@
 #!/usr/bin/liquidsoap
 # ✮⋆‧°—°‧⋆✮ radiooo — liquidsoap entrypoint
-# step 1: fallback silence only, no schedule integration yet
 
-# ⋆˙⟡ telnet server so Go can send commands later
-settings.server.telnet.set(true)
-settings.server.telnet.bind_addr.set("0.0.0.0")
-settings.server.telnet.port.set(1234)
+# ⋆˙⟡ unix socket — Go controller dials /var/run/liquidsoap/radio.sock
+settings.server.socket.set(true)
+settings.server.socket.path.set("/var/run/liquidsoap/radio.sock")
 
-# . ݁₊ ✶ play files from /media, fall back to silence if empty
-# ⋆˙⟡ single loops one file infallibly — prod will use request.queue via Go controller
-radio = single("/media/fif-a-home.mp3")
+# ✮ ⋆ ˚｡𖦹 named queue — Go controller pushes tracks via: radio_queue.push <path>
+radio_queue = request.queue(id="radio_queue")
 
-# ✮ ⋆ ˚｡𖦹 push to icecast on the 'icecast' container hostname
+# . ݁₊ ✶ 1s crossfade at every track boundary — covers natural endings and Go-triggered skips
+radio_source = crossfade(duration=1., radio_queue)
+
+# ⋆.˚ ⊹₊⟡ live dj input — butt/mixxx/idjc connect to port 8005, mount /live
+# djs connect here, not to icecast directly — keeps them in the fallback chain
+# when a dj drops, liquidsoap falls back to radio_source automatically
+live = input.harbor("live", port=8005, password="hackme")
+
+# ٩(^ᗜ^ )و 1s fade on all source switches — to live, from live, to blank
+def fade(a, b) = sequence([fade.out(duration=1., a), b]) end
+
+# ⊹ ࣪ ˖ priority: live → automated queue → silence
+radio = fallback(
+  track_sensitive=false,
+  transitions=[fade, fade, fade],
+  [live, radio_source, blank()]
+)
+
+# push to icecast on the 'icecast' container hostname
 output.icecast(
-  %mp3(bitrate = 128),
+  %mp3(bitrate = 256),
   host     = "icecast",
   port     = 8000,
   password = "hackme",

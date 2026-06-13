@@ -20,6 +20,8 @@ services:
     ports:
       - "8080:8080"
     env_file: ./api/.env
+    volumes:
+      - ./streaming/socket:/var/run/liquidsoap:ro  # ✮ ⋆ ˚｡𖦹 read the liquidsoap socket
     depends_on:
       db:
         condition: service_healthy
@@ -43,9 +45,10 @@ services:
     volumes:
       - ./streaming/radio.liq:/radio.liq:ro
       - ./streaming/test-media:/media:ro
+      - ./streaming/socket:/var/run/liquidsoap    # ⋆˙⟡ shared socket dir — api mounts this too
     command: ["/radio.liq"]
     ports:
-      - "1234:1234"   # telnet control — Go broadcast controller connects here
+      - "8005:8005"   # harbor — djs connect here with butt/mixxx/idjc
     depends_on:
       icecast:
         condition: service_healthy
