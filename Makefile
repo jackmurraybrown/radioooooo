@@ -1,16 +1,16 @@
-.PHONY: build test tidy lint run
+.PHONY: api frontend seed
 
-build:
-	go build ./...
+api:
+	cd api && go run ./cmd/api
 
-test:
-	gotestsum --format testname ./...
+frontend:
+	cd frontend && npm run dev
 
-tidy:
-	go mod tidy
+seed:
+	cd api && DATABASE_URL=postgres://radiooo:radiooo@localhost:5432/radiooo?sslmode=disable go run ./cmd/seed
 
-lint:
-	golangci-lint run ./...
+build-api:
+	cd api && go build ./...
 
-run:
-	go run ./cmd/api
+build-frontend:
+	cd frontend && npm run build
