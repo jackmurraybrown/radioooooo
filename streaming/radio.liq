@@ -19,11 +19,14 @@ live = input.harbor("live", port=8005, password="hackme")
 # ٩(^ᗜ^ ) 1s fade on all source switches
 def fade(a, b) = sequence([fade.out(duration=1., a), b]) end
 
-# ⊹ ࣪ ˖ priority: live → automated queue → silence
+# ✮⋆‧° fallback playlist — loops when nothing is scheduled
+fallback_media = playlist("/media/fallback", mode="randomize", reload_mode="watch")
+
+# ⊹ ࣪ ˖ priority: live → automated queue → fallback playlist → silence
 radio = fallback(
   track_sensitive=false,
-  transitions=[fade, fade, fade],
-  [live, radio_source, blank()]
+  transitions=[fade, fade, fade, fade],
+  [live, radio_source, fallback_media, blank()]
 )
 
 # push to icecast on the 'icecast' container hostname

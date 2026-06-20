@@ -45,6 +45,7 @@ services:
     volumes:
       - ./streaming/radio.liq:/radio.liq:ro
       - ./streaming/test-media:/media:ro
+      - ./streaming/fallback-media:/media/fallback:ro
       - ./streaming/socket:/var/run/liquidsoap    # ⋆˙⟡ shared socket dir — api mounts this too
     command: ["/radio.liq"]
     ports:

@@ -61,7 +61,7 @@ func (c *Controller) tick(ctx context.Context) {
 
 		if playing != nil {
 			c.skip()
-			slog.Info("broadcast: schedule gap, falling back to silence", "was", playing.ID)
+			slog.Info("broadcast: schedule gap, falling back", "was", playing.ID)
 		}
 		return
 	}
