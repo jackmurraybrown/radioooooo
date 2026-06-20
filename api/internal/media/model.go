@@ -29,9 +29,12 @@ type Media struct {
 	FileSizeBytes  *int64     `json:"fileSizeBytes,omitempty" db:"file_size_bytes"`
 	SourceAdapter  string     `json:"sourceAdapter"           db:"source_adapter"`
 	SourceRef      string     `json:"sourceRef"               db:"source_ref"`
+	LocalRef       *string    `json:"localRef,omitempty"      db:"local_ref"`
 	DownloadStatus string     `json:"downloadStatus"          db:"download_status"`
 	DownloadError  *string    `json:"downloadError,omitempty" db:"download_error"`
 	DownloadedAt   *time.Time `json:"downloadedAt,omitempty"  db:"downloaded_at"`
+	LoudnessLUFS   *float64   `json:"loudnessLufs,omitempty"  db:"loudness_lufs"`
+	TruePeakDB     *float64   `json:"truePeakDb,omitempty"    db:"true_peak_db"`
 	CreatedAt      time.Time  `json:"createdAt"               db:"created_at"`
 	UpdatedAt      time.Time  `json:"updatedAt"               db:"updated_at"`
 }

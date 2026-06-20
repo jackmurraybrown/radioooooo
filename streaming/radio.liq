@@ -8,8 +8,10 @@ settings.server.socket.path.set("/var/run/liquidsoap/radio.sock")
 # ✮ ⋆ ˚｡𖦹 named queue — Go controller pushes tracks via: radio_queue.push <path>
 radio_queue = request.queue(id="radio_queue")
 
-# . ݁₊ ✶ 1s crossfade at every track boundary — covers natural endings and Go-triggered skips
-radio_source = crossfade(duration=1., radio_queue)
+# . ݁₊ ✶ per-track loudness normalisation via liq_amplify annotation
+# go controller pushes: annotate:liq_amplify="1.25":/media/track.mp3
+radio_normalised = amplify(1., override="liq_amplify", radio_queue)
+radio_source = crossfade(duration=1., radio_normalised)
 
 # ⋆.˚ ⊹₊⟡ live dj input — connect to port 8005, mount /live
 # djs connect here, not to icecast directly — keeps them in the fallback chain

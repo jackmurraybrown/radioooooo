@@ -16,7 +16,10 @@ import (
 	"radioooooo/internal/database"
 	"radioooooo/internal/episode"
 	"radioooooo/internal/jobs"
+	"radioooooo/internal/media"
+	"radioooooo/internal/playlist"
 	"radioooooo/internal/server"
+	"radioooooo/internal/storage"
 )
 
 func main() {
@@ -46,7 +49,10 @@ func main() {
 	}
 	slog.Info("migrations applied")
 
-	riverClient, err := jobs.NewClient(db, river.NewWorkers(), nil)
+	workers := river.NewWorkers()
+	river.AddWorker(workers, jobs.NewLoudnessAnalysisWorker(media.NewStore(db)))
+
+	riverClient, err := jobs.NewClient(db, workers, nil)
 	if err != nil {
 		slog.Error("failed to build river client", "error", err)
 		os.Exit(1)
@@ -57,13 +63,36 @@ func main() {
 	}
 	slog.Info("river client started")
 
+	// ⊹ ࣪ ˖ storage
+	var store storage.Store
+	switch cfg.StorageDriver {
+	case "s3":
+		store = storage.NewS3(storage.S3Config{
+			Endpoint:  cfg.S3Endpoint,
+			Bucket:    cfg.S3Bucket,
+			Region:    cfg.S3Region,
+			AccessKey: cfg.S3AccessKey,
+			SecretKey: cfg.S3SecretKey,
+		})
+		slog.Info("storage: s3", "endpoint", cfg.S3Endpoint, "bucket", cfg.S3Bucket)
+	default:
+		ls, err := storage.NewLocal(cfg.StorageLocalRoot)
+		if err != nil {
+			slog.Error("storage: local init failed", "error", err)
+			os.Exit(1)
+		}
+		store = ls
+		slog.Info("storage: local", "root", cfg.StorageLocalRoot)
+	}
+	_ = store
+
 	// ⋆˙⟡ broadcast controller
 	if cfg.LiquidsoapSocket != "" && cfg.BroadcastChannelID != "" {
 		liq, err := broadcast.Dial(cfg.LiquidsoapSocket)
 		if err != nil {
 			slog.Warn("broadcast: liquidsoap not reachable, controller disabled", "error", err)
 		} else {
-			ctrl := broadcast.NewController(liq, episode.NewStore(db), cfg.BroadcastChannelID, "radio_queue")
+			ctrl := broadcast.NewController(liq, episode.NewStore(db), media.NewStore(db), playlist.NewStore(db), cfg.BroadcastChannelID, "radio_queue")
 			go func() {
 				if err := ctrl.Run(ctx); err != nil && err != context.Canceled {
 					slog.Error("broadcast: controller exited", "error", err)

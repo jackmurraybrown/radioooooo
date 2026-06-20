@@ -12,7 +12,14 @@ type Config struct {
 	JWTSecret          string
 	AllowedOrigins     []string
 	LiquidsoapSocket   string
-	BroadcastChannelID string // BROADCAST_CHANNEL_ID — channel the controller manages
+	BroadcastChannelID string
+	StorageDriver      string // "local" or "s3"
+	StorageLocalRoot   string
+	S3Endpoint         string
+	S3Bucket           string
+	S3Region           string
+	S3AccessKey        string
+	S3SecretKey        string
 }
 
 func Load() (*Config, error) {
@@ -39,5 +46,20 @@ func Load() (*Config, error) {
 		cfg.LiquidsoapSocket = s
 	}
 	cfg.BroadcastChannelID = os.Getenv("BROADCAST_CHANNEL_ID")
+
+	cfg.StorageDriver = os.Getenv("STORAGE_DRIVER")
+	if cfg.StorageDriver == "" {
+		cfg.StorageDriver = "local"
+	}
+	cfg.StorageLocalRoot = os.Getenv("STORAGE_LOCAL_ROOT")
+	if cfg.StorageLocalRoot == "" {
+		cfg.StorageLocalRoot = "/data/media"
+	}
+	cfg.S3Endpoint = os.Getenv("S3_ENDPOINT")
+	cfg.S3Bucket = os.Getenv("S3_BUCKET")
+	cfg.S3Region = os.Getenv("S3_REGION")
+	cfg.S3AccessKey = os.Getenv("S3_ACCESS_KEY")
+	cfg.S3SecretKey = os.Getenv("S3_SECRET_KEY")
+
 	return cfg, nil
 }

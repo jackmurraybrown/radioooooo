@@ -107,6 +107,44 @@ func (s *Store) Delete(ctx context.Context, id, stationID string) error {
 	return nil
 }
 
+// ✮⋆‧° resolves a playlist to file paths + loudness for the broadcast controller.
+func (s *Store) ListTracks(ctx context.Context, playlistID string) (Playlist, []PlaylistTrack, error) {
+	pl, err := s.GetByID(ctx, playlistID)
+	if err != nil {
+		return Playlist{}, nil, err
+	}
+
+	rows, err := s.db.Query(ctx, `
+		select m.local_ref, m.loudness_lufs
+		from playlist_items pi
+		join media m on m.id = pi.media_id
+		where pi.playlist_id = $1::uuid
+		  and m.local_ref is not null
+		order by pi.position asc
+	`, playlistID)
+	if err != nil {
+		return Playlist{}, nil, err
+	}
+	tracks, err := pgx.CollectRows(rows, pgx.RowToStructByName[PlaylistTrack])
+	if err != nil {
+		return Playlist{}, nil, err
+	}
+	return pl, tracks, nil
+}
+
+// ⋆˙⟡ get by id without station scoping (for internal use)
+func (s *Store) GetByID(ctx context.Context, id string) (Playlist, error) {
+	rows, err := s.db.Query(ctx, `
+		select`+cols+`
+		from playlists p
+		where p.id = $1::uuid
+	`, id)
+	if err != nil {
+		return Playlist{}, err
+	}
+	return pgx.CollectOneRow(rows, pgx.RowToStructByName[Playlist])
+}
+
 // ListItems returns playlist items joined with media metadata, ordered by position.
 func (s *Store) ListItems(ctx context.Context, playlistID string) ([]PlaylistItem, error) {
 	rows, err := s.db.Query(ctx, `

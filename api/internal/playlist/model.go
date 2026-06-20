@@ -16,6 +16,11 @@ type Playlist struct {
 	UpdatedAt     time.Time `json:"updatedAt"               db:"updated_at"`
 }
 
+type PlaylistTrack struct {
+	LocalRef     string   `db:"local_ref"`
+	LoudnessLUFS *float64 `db:"loudness_lufs"`
+}
+
 // PlaylistItem joins playlist_items with media for display in the admin UI.
 type PlaylistItem struct {
 	ID         string    `json:"id"                db:"id"`
