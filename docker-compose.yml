@@ -21,12 +21,11 @@ services:
       - "8080:8080"
     env_file: ./api/.env
     volumes:
-      - ./streaming/socket:/var/run/liquidsoap:ro  # ✮ ⋆ ˚｡𖦹 read the liquidsoap socket
+      - ./streaming/socket:/var/run/liquidsoap:ro
     depends_on:
       db:
         condition: service_healthy
 
-  # ✮⋆‧°—°‧⋆✮ streaming stack — icecast + liquidsoap (v0.3)
   icecast:
     build:
       context: ./streaming
@@ -34,7 +33,11 @@ services:
     ports:
       - "8000:8000"
     healthcheck:
-      test: ["CMD-SHELL", "cat /proc/net/tcp6 | grep -q 1F40 || cat /proc/net/tcp | grep -q 1F40"]
+      test:
+        [
+          "CMD-SHELL",
+          "cat /proc/net/tcp6 | grep -q 1F40 || cat /proc/net/tcp | grep -q 1F40",
+        ]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -46,10 +49,10 @@ services:
       - ./streaming/radio.liq:/radio.liq:ro
       - ./streaming/test-media:/media:ro
       - ./streaming/fallback-media:/media/fallback:ro
-      - ./streaming/socket:/var/run/liquidsoap    # ⋆˙⟡ shared socket dir — api mounts this too
+      - ./streaming/socket:/var/run/liquidsoap
     command: ["/radio.liq"]
     ports:
-      - "8005:8005"   # harbor — djs connect here with butt/mixxx/idjc
+      - "8005:8005"
     depends_on:
       icecast:
         condition: service_healthy
