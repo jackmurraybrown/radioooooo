@@ -7,11 +7,12 @@ import (
 )
 
 type Config struct {
-	DatabaseURL      string
-	Port             string
-	JWTSecret        string
-	AllowedOrigins   []string
-	LiquidsoapSocket string
+	DatabaseURL        string
+	Port               string
+	JWTSecret          string
+	AllowedOrigins     []string
+	LiquidsoapSocket   string
+	BroadcastChannelID string // BROADCAST_CHANNEL_ID — channel the controller manages
 }
 
 func Load() (*Config, error) {
@@ -37,5 +38,6 @@ func Load() (*Config, error) {
 	if s := os.Getenv("LIQUIDSOAP_SOCKET"); s != "" {
 		cfg.LiquidsoapSocket = s
 	}
+	cfg.BroadcastChannelID = os.Getenv("BROADCAST_CHANNEL_ID")
 	return cfg, nil
 }

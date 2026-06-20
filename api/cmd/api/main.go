@@ -10,8 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/riverqueue/river"
+	"radioooooo/internal/broadcast"
 	"radioooooo/internal/config"
 	"radioooooo/internal/database"
+	"radioooooo/internal/episode"
+	"radioooooo/internal/jobs"
 	"radioooooo/internal/server"
 )
 
@@ -31,11 +35,43 @@ func main() {
 	}
 	defer db.Close()
 
+	if err := database.MigrateRiver(ctx, db); err != nil {
+		slog.Error("failed to run river migrations", "error", err)
+		os.Exit(1)
+	}
+
 	if err := database.Migrate(cfg.DatabaseURL); err != nil {
 		slog.Error("failed to run migrations", "error", err)
 		os.Exit(1)
 	}
 	slog.Info("migrations applied")
+
+	riverClient, err := jobs.NewClient(db, river.NewWorkers(), nil)
+	if err != nil {
+		slog.Error("failed to build river client", "error", err)
+		os.Exit(1)
+	}
+	if err := riverClient.Start(ctx); err != nil {
+		slog.Error("failed to start river client", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("river client started")
+
+	// ⋆˙⟡ broadcast controller
+	if cfg.LiquidsoapSocket != "" && cfg.BroadcastChannelID != "" {
+		liq, err := broadcast.Dial(cfg.LiquidsoapSocket)
+		if err != nil {
+			slog.Warn("broadcast: liquidsoap not reachable, controller disabled", "error", err)
+		} else {
+			ctrl := broadcast.NewController(liq, episode.NewStore(db), cfg.BroadcastChannelID, "radio_queue")
+			go func() {
+				if err := ctrl.Run(ctx); err != nil && err != context.Canceled {
+					slog.Error("broadcast: controller exited", "error", err)
+				}
+			}()
+			slog.Info("broadcast: controller started", "channel", cfg.BroadcastChannelID)
+		}
+	}
 
 	srv := server.New(cfg, db)
 
@@ -68,6 +104,10 @@ func main() {
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		slog.Error("graceful shutdown failed", "error", err)
 		os.Exit(1)
+	}
+
+	if err := riverClient.Stop(shutdownCtx); err != nil {
+		slog.Error("river client stop failed", "error", err)
 	}
 
 	slog.Info("server stopped")

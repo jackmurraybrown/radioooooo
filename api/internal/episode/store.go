@@ -43,8 +43,7 @@ type UpdateParams struct {
 	SourceRef     string
 }
 
-// Create inserts an episode. returns pgx.ErrNoRows if the channel does not
-// belong to stationID, preventing cross-station writes at the db layer.
+// ⋆˙⟡ returns pgx.ErrNoRows if the channel doesn't belong to stationID.
 func (s *Store) Create(ctx context.Context, p CreateParams) (Episode, error) {
 	rows, err := s.db.Query(ctx, `
 		insert into episodes (channel_id, title, description, start_time, end_time, type, source_adapter, source_ref)
@@ -85,8 +84,7 @@ func (s *Store) Get(ctx context.Context, id, channelID string) (Episode, error) 
 	return pgx.CollectOneRow(rows, pgx.RowToStructByName[Episode])
 }
 
-// Update returns pgx.ErrNoRows if the episode is not found or the channel does
-// not belong to stationID.
+// . ݁₊ ✶ returns pgx.ErrNoRows if not found or wrong station.
 func (s *Store) Update(ctx context.Context, id, channelID, stationID string, p UpdateParams) (Episode, error) {
 	rows, err := s.db.Query(ctx, `
 		update episodes e
@@ -106,8 +104,38 @@ func (s *Store) Update(ctx context.Context, id, channelID, stationID string, p U
 	return pgx.CollectOneRow(rows, pgx.RowToStructByName[Episode])
 }
 
-// Delete returns pgx.ErrNoRows if the episode is not found or the channel does
-// not belong to stationID.
+// ⊹ ࣪ ˖ what's on air right now? pgx.ErrNoRows if nothing.
+func (s *Store) GetCurrent(ctx context.Context, channelID string) (Episode, error) {
+	rows, err := s.db.Query(ctx, `
+		select`+cols+`
+		from episodes e
+		where e.channel_id = $1::uuid
+		  and e.start_time <= now()
+		  and e.end_time > now()
+		limit 1
+	`, channelID)
+	if err != nil {
+		return Episode{}, err
+	}
+	return pgx.CollectOneRow(rows, pgx.RowToStructByName[Episode])
+}
+
+// ✮⋆‧° next episode coming up. pgx.ErrNoRows if nothing.
+func (s *Store) GetNext(ctx context.Context, channelID string) (Episode, error) {
+	rows, err := s.db.Query(ctx, `
+		select`+cols+`
+		from episodes e
+		where e.channel_id = $1::uuid
+		  and e.start_time > now()
+		order by e.start_time asc
+		limit 1
+	`, channelID)
+	if err != nil {
+		return Episode{}, err
+	}
+	return pgx.CollectOneRow(rows, pgx.RowToStructByName[Episode])
+}
+
 func (s *Store) Delete(ctx context.Context, id, channelID, stationID string) error {
 	result, err := s.db.Exec(ctx, `
 		delete from episodes e

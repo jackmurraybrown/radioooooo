@@ -11,12 +11,12 @@ radio_queue = request.queue(id="radio_queue")
 # . ݁₊ ✶ 1s crossfade at every track boundary — covers natural endings and Go-triggered skips
 radio_source = crossfade(duration=1., radio_queue)
 
-# ⋆.˚ ⊹₊⟡ live dj input — butt/mixxx/idjc connect to port 8005, mount /live
+# ⋆.˚ ⊹₊⟡ live dj input — connect to port 8005, mount /live
 # djs connect here, not to icecast directly — keeps them in the fallback chain
 # when a dj drops, liquidsoap falls back to radio_source automatically
 live = input.harbor("live", port=8005, password="hackme")
 
-# ٩(^ᗜ^ )و 1s fade on all source switches — to live, from live, to blank
+# ٩(^ᗜ^ ) 1s fade on all source switches
 def fade(a, b) = sequence([fade.out(duration=1., a), b]) end
 
 # ⊹ ࣪ ˖ priority: live → automated queue → silence
