@@ -16,6 +16,7 @@ import (
 	"radioooooo/internal/channel"
 	"radioooooo/internal/config"
 	"radioooooo/internal/episode"
+	"radioooooo/internal/ical"
 	"radioooooo/internal/login"
 	"radioooooo/internal/media"
 	"radioooooo/internal/playlist"
@@ -42,7 +43,7 @@ func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.Listener
 	}))
 
 	stationStore := station.NewStore(db)
-	channelStore := channel.NewStore(db)
+	channelStore := channel.NewStore(db, cfg.EncryptionKey)
 	episodeStore := episode.NewStore(db)
 	mediaStore := media.NewStore(db)
 	playlistStore := playlist.NewStore(db)
@@ -90,6 +91,7 @@ func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.Listener
 	media.NewHandler(mediaStore).Register(api)
 	playlist.NewHandler(playlistStore).Register(api)
 	show.NewHandler(showStore, stationStore).Register(api)
+	ical.NewHandler(ical.NewStore(db)).Register(api)
 	analytics.NewHandler(analytics.NewStore(db), channelStore, listenerSource).Register(api)
 
 	return &Server{router: r}

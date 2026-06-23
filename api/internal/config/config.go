@@ -12,6 +12,7 @@ type Config struct {
 	JWTSecret          string
 	AllowedOrigins     []string
 	LiquidsoapSocket   string
+	EncryptionKey      string
 	BroadcastChannelID string
 	StorageDriver      string // "local" or "s3"
 	StorageLocalRoot   string
@@ -50,6 +51,7 @@ func Load() (*Config, error) {
 	if s := os.Getenv("LIQUIDSOAP_SOCKET"); s != "" {
 		cfg.LiquidsoapSocket = s
 	}
+	cfg.EncryptionKey = os.Getenv("ENCRYPTION_KEY")
 	cfg.BroadcastChannelID = os.Getenv("BROADCAST_CHANNEL_ID")
 
 	cfg.StorageDriver = os.Getenv("STORAGE_DRIVER")
