@@ -34,9 +34,9 @@ func (w *ShowExpansionWorker) Work(ctx context.Context, job *river.Job[ShowExpan
 	}
 
 	for _, s := range shows {
-		tzName, err := w.stations.TimezoneForChannel(ctx, s.ChannelID)
+		tzName, horizonDays, _, err := w.stations.SettingsForChannel(ctx, s.ChannelID)
 		if err != nil {
-			slog.Error("expand: timezone lookup failed", "show", s.ID, "error", err)
+			slog.Error("expand: station settings lookup failed", "show", s.ID, "error", err)
 			continue
 		}
 		loc, err := time.LoadLocation(tzName)
@@ -45,7 +45,7 @@ func (w *ShowExpansionWorker) Work(ctx context.Context, job *river.Job[ShowExpan
 			continue
 		}
 
-		count, err := show.ExpandShow(ctx, w.store, s, loc)
+		count, err := show.ExpandShow(ctx, w.store, s, loc, horizonDays)
 		if err != nil {
 			slog.Error("expand: show failed", "show", s.ID, "title", s.Title, "error", err)
 			continue

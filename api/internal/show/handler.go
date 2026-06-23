@@ -143,10 +143,10 @@ func (h *Handler) create(ctx context.Context, input *createInput) (*showOutput, 
 	}
 
 	// ⊹ ࣪ ˖ expand initial episodes immediately
-	tzName, err := h.stations.TimezoneForChannel(ctx, s.ChannelID)
+	tzName, horizonDays, _, err := h.stations.SettingsForChannel(ctx, s.ChannelID)
 	if err == nil {
 		if loc, err := time.LoadLocation(tzName); err == nil {
-			count, err := ExpandShow(ctx, h.store, s, loc)
+			count, err := ExpandShow(ctx, h.store, s, loc, horizonDays)
 			if err != nil {
 				slog.Warn("show created but expansion failed", "show", s.ID, "error", err)
 			} else if count > 0 {

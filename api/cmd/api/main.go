@@ -17,6 +17,7 @@ import (
 	"radioooooo/internal/config"
 	"radioooooo/internal/database"
 	"radioooooo/internal/episode"
+	"radioooooo/internal/gapfill"
 	"radioooooo/internal/ical"
 	"radioooooo/internal/jobs"
 	"radioooooo/internal/media"
@@ -86,6 +87,13 @@ func main() {
 			},
 			nil,
 		),
+		river.NewPeriodicJob(
+			river.PeriodicInterval(24*time.Hour),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return gapfill.FillArgs{}, nil
+			},
+			nil,
+		),
 	}
 
 	riverClient, err := jobs.NewClient(db, workers, periodic)
@@ -148,6 +156,7 @@ func main() {
 	river.AddWorker(workers, analytics.NewCollectorWorker(icecastSource, geoResolver, analyticsStore, channelStore))
 	river.AddWorker(workers, jobs.NewShowExpansionWorker(show.NewStore(db), station.NewStore(db)))
 	river.AddWorker(workers, ical.NewSyncWorker(ical.NewStore(db)))
+	river.AddWorker(workers, gapfill.NewFillWorker(gapfill.NewStore(db)))
 	river.AddWorker(workers, analytics.NewGeoUpdateWorker(cfg.GeoIPDatabasePath, geoResolver))
 
 	// ⋆˙⟡ broadcast controller

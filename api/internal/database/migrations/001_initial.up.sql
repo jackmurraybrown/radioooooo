@@ -1,10 +1,13 @@
 create table stations (
-    id         uuid        primary key default gen_random_uuid(),
-    name       text        not null,
-    slug       text        not null unique,
-    timezone   text        not null default 'UTC',
-    created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now()
+    id                        uuid        primary key default gen_random_uuid(),
+    name                      text        not null,
+    slug                      text        not null unique,
+    timezone                  text        not null default 'UTC',
+    season_end_date           date,
+    default_show_horizon_days int         not null default 90,
+    logo_url                  text,
+    created_at                timestamptz not null default now(),
+    updated_at                timestamptz not null default now()
 );
 
 create table api_keys (
@@ -21,6 +24,8 @@ create table channels (
     slug                 text        not null unique,
     mount                text        not null default '/main',
     harbor_password_hash text,
+    gap_fill_enabled     bool        not null default false,
+    repeat_prefill_days  int         not null default 7,
     created_at           timestamptz not null default now(),
     updated_at           timestamptz not null default now()
 );
@@ -71,9 +76,29 @@ create table episodes (
     original_start timestamptz,
     ical_uid       text,
     ical_feed_id   uuid        references ical_feeds(id) on delete set null,
+    auto_filled    bool        not null default false,
+    repeat_of      uuid        references episodes(id) on delete set null,
     created_at     timestamptz not null default now(),
     updated_at     timestamptz not null default now(),
     constraint episodes_end_after_start check (end_time > start_time)
+);
+
+create table gap_fill_rules (
+    id           uuid        primary key default gen_random_uuid(),
+    channel_id   uuid        not null references channels(id) on delete cascade,
+    priority     int         not null default 0,
+    time_from    text,
+    time_to      text,
+    type         text        not null check (type in ('playlist', 'show-repeat')),
+    source_ref   text        not null,
+    created_at   timestamptz not null default now()
+);
+
+create table repeat_airings (
+    id         uuid        primary key default gen_random_uuid(),
+    episode_id uuid        not null references episodes(id) on delete cascade,
+    channel_id uuid        not null references channels(id) on delete cascade,
+    aired_at   timestamptz not null default now()
 );
 
 create index on api_keys  (station_id);
@@ -85,3 +110,5 @@ create index on episodes  (show_id) where show_id is not null;
 create index on episodes  (start_time);
 create unique index on episodes (ical_feed_id, ical_uid) where ical_uid is not null;
 create index on ical_feeds (channel_id);
+create index on gap_fill_rules (channel_id, priority);
+create index on repeat_airings (channel_id, aired_at);

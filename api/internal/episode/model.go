@@ -25,6 +25,8 @@ type Episode struct {
 	OriginalStart *time.Time `json:"originalStart,omitempty"  db:"original_start"`
 	IcalUID       *string    `json:"icalUid,omitempty"        db:"ical_uid"`
 	IcalFeedID    *string    `json:"icalFeedId,omitempty"     db:"ical_feed_id"`
+	AutoFilled    bool       `json:"autoFilled"               db:"auto_filled"`
+	RepeatOf      *string    `json:"repeatOf,omitempty"       db:"repeat_of"`
 	CreatedAt     time.Time  `json:"createdAt"                db:"created_at"`
 	UpdatedAt     time.Time  `json:"updatedAt"                db:"updated_at"`
 }

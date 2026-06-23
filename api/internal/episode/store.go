@@ -12,7 +12,8 @@ import (
 const cols = `
 	e.id::text, e.channel_id::text, e.show_id::text, e.title, e.description, e.image_ref,
 	e.color, e.start_time, e.end_time, e.type, e.source_adapter, e.source_ref,
-	e.original_start, e.ical_uid, e.ical_feed_id::text, e.created_at, e.updated_at`
+	e.original_start, e.ical_uid, e.ical_feed_id::text,
+	e.auto_filled, e.repeat_of::text, e.created_at, e.updated_at`
 
 type Store struct {
 	db *pgxpool.Pool
