@@ -12,6 +12,7 @@ import (
 	"github.com/riverqueue/river"
 )
 
+// ⋆˙⟡ no args — job discovers enabled channels itself
 type FillArgs struct{}
 
 func (FillArgs) Kind() string { return "gap_fill" }

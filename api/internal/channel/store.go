@@ -60,6 +60,18 @@ func (s *Store) Get(ctx context.Context, id, stationID string) (Channel, error) 
 	return pgx.CollectOneRow(rows, pgx.RowToStructByName[Channel])
 }
 
+// ✮⋆‧° all channels across all stations (for the broadcast manager)
+func (s *Store) ListAll(ctx context.Context) ([]Channel, error) {
+	rows, err := s.db.Query(ctx, `
+		select id::text, station_id::text, name, slug, mount, harbor_password_hash, created_at, updated_at
+		from channels order by created_at asc
+	`)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByName[Channel])
+}
+
 // ⋆˙⟡ looks up a channel by its icecast mount path
 func (s *Store) GetByMount(ctx context.Context, mount string) (Channel, error) {
 	rows, err := s.db.Query(ctx, `

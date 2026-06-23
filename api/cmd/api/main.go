@@ -159,19 +159,17 @@ func main() {
 	river.AddWorker(workers, gapfill.NewFillWorker(gapfill.NewStore(db)))
 	river.AddWorker(workers, analytics.NewGeoUpdateWorker(cfg.GeoIPDatabasePath, geoResolver))
 
-	// ⋆˙⟡ broadcast controller
-	if cfg.LiquidsoapSocket != "" && cfg.BroadcastChannelID != "" {
+	// ⋆˙⟡ broadcast manager — one controller per channel
+	var mgr *broadcast.Manager
+	if cfg.LiquidsoapSocket != "" {
 		liq, err := broadcast.Dial(cfg.LiquidsoapSocket)
 		if err != nil {
-			slog.Warn("broadcast: liquidsoap not reachable, controller disabled", "error", err)
+			slog.Warn("broadcast: liquidsoap not reachable, controllers disabled", "error", err)
 		} else {
-			ctrl := broadcast.NewController(liq, episode.NewStore(db), media.NewStore(db), playlist.NewStore(db), cfg.BroadcastChannelID, "radio_queue")
-			go func() {
-				if err := ctrl.Run(ctx); err != nil && err != context.Canceled {
-					slog.Error("broadcast: controller exited", "error", err)
-				}
-			}()
-			slog.Info("broadcast: controller started", "channel", cfg.BroadcastChannelID)
+			mgr = broadcast.NewManager(liq, channelStore, episode.NewStore(db), media.NewStore(db), playlist.NewStore(db))
+			if err := mgr.Start(ctx); err != nil {
+				slog.Error("broadcast: manager start failed", "error", err)
+			}
 		}
 	}
 
@@ -206,6 +204,10 @@ func main() {
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		slog.Error("graceful shutdown failed", "error", err)
 		os.Exit(1)
+	}
+
+	if mgr != nil {
+		mgr.Stop()
 	}
 
 	if err := riverClient.Stop(shutdownCtx); err != nil {

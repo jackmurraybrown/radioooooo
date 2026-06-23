@@ -16,6 +16,7 @@ import (
 	"radioooooo/internal/channel"
 	"radioooooo/internal/config"
 	"radioooooo/internal/episode"
+	"radioooooo/internal/livenow"
 	"radioooooo/internal/ical"
 	"radioooooo/internal/login"
 	"radioooooo/internal/media"
@@ -93,6 +94,9 @@ func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.Listener
 	show.NewHandler(showStore, stationStore).Register(api)
 	ical.NewHandler(ical.NewStore(db)).Register(api)
 	analytics.NewHandler(analytics.NewStore(db), channelStore, listenerSource).Register(api)
+
+	// ⊹ ࣪ ˖ public SSE — no auth, raw chi route
+	livenow.NewHandler(episodeStore).Register(r)
 
 	return &Server{router: r}
 }

@@ -150,3 +150,34 @@ func (s *Store) Delete(ctx context.Context, id, channelID, stationID string) err
 	}
 	return nil
 }
+
+// episodes overlapping a time range — for the public schedule range endpoint
+func (s *Store) ListRange(ctx context.Context, channelID string, start, end time.Time) ([]Episode, error) {
+	rows, err := s.db.Query(ctx, `
+		select`+cols+`
+		from episodes e
+		where e.channel_id = $1::uuid
+		  and e.start_time < $3 and e.end_time > $2
+		order by e.start_time asc
+	`, channelID, start, end)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByName[Episode])
+}
+
+// upcoming episodes from now, for the public schedule endpoint
+func (s *Store) ListUpcoming(ctx context.Context, channelID string, limit int) ([]Episode, error) {
+	rows, err := s.db.Query(ctx, `
+		select`+cols+`
+		from episodes e
+		where e.channel_id = $1::uuid
+		  and e.end_time > now()
+		order by e.start_time asc
+		limit $2
+	`, channelID, limit)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByName[Episode])
+}
