@@ -128,8 +128,6 @@ func main() {
 		store = ls
 		slog.Info("storage: local", "root", cfg.StorageLocalRoot)
 	}
-	_ = store
-
 	// ✮⋆‧° listener analytics
 	icecastSource := analytics.NewIcecastSource(analytics.IcecastConfig{
 		BaseURL:  cfg.IcecastURL,
@@ -173,7 +171,7 @@ func main() {
 		}
 	}
 
-	srv := server.New(cfg, db, icecastSource)
+	srv := server.New(cfg, db, icecastSource, store, riverClient)
 
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Port),

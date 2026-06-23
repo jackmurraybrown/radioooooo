@@ -8,6 +8,8 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
+	"github.com/riverqueue/river"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,6 +25,7 @@ import (
 	"radioooooo/internal/playlist"
 	"radioooooo/internal/show"
 	"radioooooo/internal/station"
+	"radioooooo/internal/storage"
 	"radioooooo/internal/user"
 )
 
@@ -30,7 +33,7 @@ type Server struct {
 	router http.Handler
 }
 
-func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.ListenerSource) *Server {
+func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.ListenerSource, files storage.Store, rc *river.Client[pgx.Tx]) *Server {
 	r := chi.NewMux()
 
 	r.Use(chiMiddleware.Logger)
@@ -89,7 +92,9 @@ func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.Listener
 	user.NewHandler(userStore).Register(api)
 	channel.NewHandler(channelStore).Register(api)
 	episode.NewHandler(episodeStore).Register(api)
-	media.NewHandler(mediaStore).Register(api)
+	mediaHandler := media.NewHandler(mediaStore, files, rc)
+	mediaHandler.Register(api)
+	mediaHandler.RegisterUpload(r)
 	playlist.NewHandler(playlistStore).Register(api)
 	show.NewHandler(showStore, stationStore).Register(api)
 	ical.NewHandler(ical.NewStore(db)).Register(api)
