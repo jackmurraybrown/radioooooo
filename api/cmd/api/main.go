@@ -10,9 +10,18 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/riverqueue/river"
+	"radioooooo/internal/analytics"
+	"radioooooo/internal/broadcast"
+	"radioooooo/internal/channel"
 	"radioooooo/internal/config"
 	"radioooooo/internal/database"
+	"radioooooo/internal/episode"
+	"radioooooo/internal/jobs"
+	"radioooooo/internal/media"
+	"radioooooo/internal/playlist"
 	"radioooooo/internal/server"
+	"radioooooo/internal/storage"
 )
 
 func main() {
@@ -31,13 +40,114 @@ func main() {
 	}
 	defer db.Close()
 
+	if err := database.MigrateRiver(ctx, db); err != nil {
+		slog.Error("failed to run river migrations", "error", err)
+		os.Exit(1)
+	}
+
 	if err := database.Migrate(cfg.DatabaseURL); err != nil {
 		slog.Error("failed to run migrations", "error", err)
 		os.Exit(1)
 	}
 	slog.Info("migrations applied")
 
-	srv := server.New(cfg, db)
+	workers := river.NewWorkers()
+	river.AddWorker(workers, jobs.NewLoudnessAnalysisWorker(media.NewStore(db)))
+
+	periodic := []*river.PeriodicJob{
+		river.NewPeriodicJob(
+			river.PeriodicInterval(30*time.Second),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return analytics.CollectorArgs{}, nil
+			},
+			nil,
+		),
+		river.NewPeriodicJob(
+			river.PeriodicInterval(7*24*time.Hour),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return analytics.GeoUpdateArgs{}, nil
+			},
+			nil,
+		),
+	}
+
+	riverClient, err := jobs.NewClient(db, workers, periodic)
+	if err != nil {
+		slog.Error("failed to build river client", "error", err)
+		os.Exit(1)
+	}
+	if err := riverClient.Start(ctx); err != nil {
+		slog.Error("failed to start river client", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("river client started")
+
+	// ⊹ ࣪ ˖ storage
+	var store storage.Store
+	switch cfg.StorageDriver {
+	case "s3":
+		store = storage.NewS3(storage.S3Config{
+			Endpoint:  cfg.S3Endpoint,
+			Bucket:    cfg.S3Bucket,
+			Region:    cfg.S3Region,
+			AccessKey: cfg.S3AccessKey,
+			SecretKey: cfg.S3SecretKey,
+		})
+		slog.Info("storage: s3", "endpoint", cfg.S3Endpoint, "bucket", cfg.S3Bucket)
+	default:
+		ls, err := storage.NewLocal(cfg.StorageLocalRoot)
+		if err != nil {
+			slog.Error("storage: local init failed", "error", err)
+			os.Exit(1)
+		}
+		store = ls
+		slog.Info("storage: local", "root", cfg.StorageLocalRoot)
+	}
+	_ = store
+
+	// ✮⋆‧° listener analytics
+	icecastSource := analytics.NewIcecastSource(analytics.IcecastConfig{
+		BaseURL:  cfg.IcecastURL,
+		User:     cfg.IcecastAdminUser,
+		Password: cfg.IcecastAdminPass,
+		Mounts:   cfg.IcecastMounts,
+	})
+
+	var geoResolver *analytics.GeoResolver
+	if cfg.GeoIPDatabasePath != "" {
+		gr, err := analytics.NewGeoResolver(cfg.GeoIPDatabasePath)
+		if err != nil {
+			slog.Warn("analytics: geoip disabled", "error", err)
+		} else {
+			geoResolver = gr
+			defer gr.Close()
+			slog.Info("analytics: geoip loaded", "path", cfg.GeoIPDatabasePath)
+		}
+	}
+
+	analyticsStore := analytics.NewStore(db)
+	channelStore := channel.NewStore(db)
+
+	river.AddWorker(workers, analytics.NewCollectorWorker(icecastSource, geoResolver, analyticsStore, channelStore))
+	river.AddWorker(workers, analytics.NewGeoUpdateWorker(cfg.GeoIPDatabasePath, geoResolver))
+
+	// ⋆˙⟡ broadcast controller
+	if cfg.LiquidsoapSocket != "" && cfg.BroadcastChannelID != "" {
+		liq, err := broadcast.Dial(cfg.LiquidsoapSocket)
+		if err != nil {
+			slog.Warn("broadcast: liquidsoap not reachable, controller disabled", "error", err)
+		} else {
+			ctrl := broadcast.NewController(liq, episode.NewStore(db), media.NewStore(db), playlist.NewStore(db), cfg.BroadcastChannelID, "radio_queue")
+			go func() {
+				if err := ctrl.Run(ctx); err != nil && err != context.Canceled {
+					slog.Error("broadcast: controller exited", "error", err)
+				}
+			}()
+			slog.Info("broadcast: controller started", "channel", cfg.BroadcastChannelID)
+		}
+	}
+
+	srv := server.New(cfg, db, icecastSource)
 
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Port),
@@ -68,6 +178,10 @@ func main() {
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		slog.Error("graceful shutdown failed", "error", err)
 		os.Exit(1)
+	}
+
+	if err := riverClient.Stop(shutdownCtx); err != nil {
+		slog.Error("river client stop failed", "error", err)
 	}
 
 	slog.Info("server stopped")

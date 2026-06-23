@@ -16,6 +16,8 @@ create table media (
         check (download_status in ('not_required', 'pending', 'downloading', 'ready', 'failed')),
     download_error   text,
     downloaded_at    timestamptz,
+    loudness_lufs    double precision,
+    true_peak_db     double precision,
     created_at       timestamptz not null default now(),
     updated_at       timestamptz not null default now()
 );

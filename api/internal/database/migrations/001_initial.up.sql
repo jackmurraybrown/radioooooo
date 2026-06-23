@@ -18,6 +18,7 @@ create table channels (
     station_id uuid        not null references stations(id) on delete cascade,
     name       text        not null,
     slug       text        not null unique,
+    mount      text        not null default '/main',
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
