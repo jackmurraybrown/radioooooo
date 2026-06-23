@@ -2,6 +2,7 @@ package show
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -120,4 +121,39 @@ func (s *Store) Delete(ctx context.Context, id, channelID, stationID string) err
 		return pgx.ErrNoRows
 	}
 	return nil
+}
+
+// ✮⋆‧° returns all shows (for the expansion job)
+func (s *Store) ListAll(ctx context.Context) ([]Show, error) {
+	rows, err := s.db.Query(ctx, `select`+cols+` from shows s order by s.created_at asc`)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByName[Show])
+}
+
+// ⋆˙⟡ latest original_start for a show's episodes — tells us where expansion left off
+func (s *Store) LatestEpisodeStart(ctx context.Context, showID string) (*time.Time, error) {
+	var t *time.Time
+	err := s.db.QueryRow(ctx, `
+		select max(original_start) from episodes where show_id = $1::uuid
+	`, showID).Scan(&t)
+	return t, err
+}
+
+// ⊹ ࣪ ˖ inserts a batch of expanded episodes for a show
+func (s *Store) InsertEpisodes(ctx context.Context, showID, channelID string, sh Show, starts []time.Time) (int, error) {
+	count := 0
+	for _, start := range starts {
+		end := start.Add(time.Duration(sh.DurationMinutes) * time.Minute)
+		_, err := s.db.Exec(ctx, `
+			insert into episodes (channel_id, show_id, title, description, image_ref, start_time, end_time, type, source_adapter, source_ref, original_start)
+			values ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $6)
+		`, channelID, showID, sh.Title, sh.Description, sh.ImageRef, start, end, sh.Type, sh.SourceAdapter, sh.SourceRef)
+		if err != nil {
+			return count, err
+		}
+		count++
+	}
+	return count, nil
 }

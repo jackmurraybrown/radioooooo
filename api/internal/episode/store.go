@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+
 const cols = `
 	e.id::text, e.channel_id::text, e.show_id::text, e.title, e.description, e.image_ref,
 	e.start_time, e.end_time, e.type, e.source_adapter, e.source_ref,
@@ -49,8 +50,7 @@ func (s *Store) Create(ctx context.Context, p CreateParams) (Episode, error) {
 		insert into episodes (channel_id, title, description, start_time, end_time, type, source_adapter, source_ref)
 		select $1::uuid, $2, $3, $4, $5, $6, $7, $8
 		from channels where id = $1::uuid and station_id = $9::uuid
-		returning`+` id::text, channel_id::text, title, description, image_ref,
-		start_time, end_time, type, source_adapter, source_ref, created_at, updated_at`,
+		returning`+cols,
 		p.ChannelID, p.Title, p.Description, p.StartTime, p.EndTime, p.Type, p.SourceAdapter, p.SourceRef, p.StationID,
 	)
 	if err != nil {
@@ -93,9 +93,7 @@ func (s *Store) Update(ctx context.Context, id, channelID, stationID string, p U
 		from channels c
 		where e.id=$1::uuid and e.channel_id=$2::uuid
 		  and e.channel_id=c.id and c.station_id=$10::uuid
-		returning`+` e.id::text, e.channel_id::text, e.title, e.description, e.image_ref,
-		e.start_time, e.end_time, e.type, e.source_adapter, e.source_ref,
-		e.created_at, e.updated_at`,
+		returning`+cols,
 		id, channelID, p.Title, p.Description, p.StartTime, p.EndTime, p.Type, p.SourceAdapter, p.SourceRef, stationID,
 	)
 	if err != nil {

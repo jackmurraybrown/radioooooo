@@ -89,7 +89,7 @@ func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.Listener
 	episode.NewHandler(episodeStore).Register(api)
 	media.NewHandler(mediaStore).Register(api)
 	playlist.NewHandler(playlistStore).Register(api)
-	show.NewHandler(showStore).Register(api)
+	show.NewHandler(showStore, stationStore).Register(api)
 	analytics.NewHandler(analytics.NewStore(db), channelStore, listenerSource).Register(api)
 
 	return &Server{router: r}

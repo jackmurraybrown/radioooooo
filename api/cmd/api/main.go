@@ -21,6 +21,8 @@ import (
 	"radioooooo/internal/media"
 	"radioooooo/internal/playlist"
 	"radioooooo/internal/server"
+	"radioooooo/internal/show"
+	"radioooooo/internal/station"
 	"radioooooo/internal/storage"
 )
 
@@ -66,6 +68,13 @@ func main() {
 			river.PeriodicInterval(7*24*time.Hour),
 			func() (river.JobArgs, *river.InsertOpts) {
 				return analytics.GeoUpdateArgs{}, nil
+			},
+			nil,
+		),
+		river.NewPeriodicJob(
+			river.PeriodicInterval(24*time.Hour),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return jobs.ShowExpansionArgs{}, nil
 			},
 			nil,
 		),
@@ -129,6 +138,7 @@ func main() {
 	channelStore := channel.NewStore(db)
 
 	river.AddWorker(workers, analytics.NewCollectorWorker(icecastSource, geoResolver, analyticsStore, channelStore))
+	river.AddWorker(workers, jobs.NewShowExpansionWorker(show.NewStore(db), station.NewStore(db)))
 	river.AddWorker(workers, analytics.NewGeoUpdateWorker(cfg.GeoIPDatabasePath, geoResolver))
 
 	// ⋆˙⟡ broadcast controller

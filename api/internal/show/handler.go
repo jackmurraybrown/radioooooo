@@ -7,18 +7,21 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
 	"radioooooo/internal/auth"
+	"radioooooo/internal/station"
 )
 
 type Handler struct {
-	store *Store
+	store    *Store
+	stations *station.Store
 }
 
-func NewHandler(store *Store) *Handler {
-	return &Handler{store: store}
+func NewHandler(store *Store, stations *station.Store) *Handler {
+	return &Handler{store: store, stations: stations}
 }
 
 func (h *Handler) Register(api huma.API) {
@@ -138,6 +141,20 @@ func (h *Handler) create(ctx context.Context, input *createInput) (*showOutput, 
 		slog.Error("failed to create show", "error", err)
 		return nil, huma.Error500InternalServerError("internal error")
 	}
+
+	// ⊹ ࣪ ˖ expand initial episodes immediately
+	tzName, err := h.stations.TimezoneForChannel(ctx, s.ChannelID)
+	if err == nil {
+		if loc, err := time.LoadLocation(tzName); err == nil {
+			count, err := ExpandShow(ctx, h.store, s, loc)
+			if err != nil {
+				slog.Warn("show created but expansion failed", "show", s.ID, "error", err)
+			} else if count > 0 {
+				slog.Info("show created, episodes expanded", "show", s.ID, "count", count)
+			}
+		}
+	}
+
 	return &showOutput{Body: s}, nil
 }
 
