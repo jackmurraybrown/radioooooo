@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/riverqueue/river"
+	"radioooooo/internal/analytics"
 	"radioooooo/internal/broadcast"
+	"radioooooo/internal/channel"
 	"radioooooo/internal/config"
 	"radioooooo/internal/database"
 	"radioooooo/internal/episode"
@@ -52,7 +54,24 @@ func main() {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, jobs.NewLoudnessAnalysisWorker(media.NewStore(db)))
 
-	riverClient, err := jobs.NewClient(db, workers, nil)
+	periodic := []*river.PeriodicJob{
+		river.NewPeriodicJob(
+			river.PeriodicInterval(30*time.Second),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return analytics.CollectorArgs{}, nil
+			},
+			nil,
+		),
+		river.NewPeriodicJob(
+			river.PeriodicInterval(7*24*time.Hour),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return analytics.GeoUpdateArgs{}, nil
+			},
+			nil,
+		),
+	}
+
+	riverClient, err := jobs.NewClient(db, workers, periodic)
 	if err != nil {
 		slog.Error("failed to build river client", "error", err)
 		os.Exit(1)
@@ -86,6 +105,32 @@ func main() {
 	}
 	_ = store
 
+	// ✮⋆‧° listener analytics
+	icecastSource := analytics.NewIcecastSource(analytics.IcecastConfig{
+		BaseURL:  cfg.IcecastURL,
+		User:     cfg.IcecastAdminUser,
+		Password: cfg.IcecastAdminPass,
+		Mounts:   cfg.IcecastMounts,
+	})
+
+	var geoResolver *analytics.GeoResolver
+	if cfg.GeoIPDatabasePath != "" {
+		gr, err := analytics.NewGeoResolver(cfg.GeoIPDatabasePath)
+		if err != nil {
+			slog.Warn("analytics: geoip disabled", "error", err)
+		} else {
+			geoResolver = gr
+			defer gr.Close()
+			slog.Info("analytics: geoip loaded", "path", cfg.GeoIPDatabasePath)
+		}
+	}
+
+	analyticsStore := analytics.NewStore(db)
+	channelStore := channel.NewStore(db)
+
+	river.AddWorker(workers, analytics.NewCollectorWorker(icecastSource, geoResolver, analyticsStore, channelStore))
+	river.AddWorker(workers, analytics.NewGeoUpdateWorker(cfg.GeoIPDatabasePath, geoResolver))
+
 	// ⋆˙⟡ broadcast controller
 	if cfg.LiquidsoapSocket != "" && cfg.BroadcastChannelID != "" {
 		liq, err := broadcast.Dial(cfg.LiquidsoapSocket)
@@ -102,7 +147,7 @@ func main() {
 		}
 	}
 
-	srv := server.New(cfg, db)
+	srv := server.New(cfg, db, icecastSource)
 
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Port),

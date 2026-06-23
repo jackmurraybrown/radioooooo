@@ -20,6 +20,11 @@ type Config struct {
 	S3Region           string
 	S3AccessKey        string
 	S3SecretKey        string
+	IcecastURL         string
+	IcecastAdminUser   string
+	IcecastAdminPass   string
+	IcecastMounts      []string
+	GeoIPDatabasePath  string
 }
 
 func Load() (*Config, error) {
@@ -55,6 +60,25 @@ func Load() (*Config, error) {
 	if cfg.StorageLocalRoot == "" {
 		cfg.StorageLocalRoot = "/data/media"
 	}
+	cfg.IcecastURL = os.Getenv("ICECAST_URL")
+	if cfg.IcecastURL == "" {
+		cfg.IcecastURL = "http://icecast:8000"
+	}
+	cfg.IcecastAdminUser = os.Getenv("ICECAST_ADMIN_USER")
+	if cfg.IcecastAdminUser == "" {
+		cfg.IcecastAdminUser = "admin"
+	}
+	cfg.IcecastAdminPass = os.Getenv("ICECAST_ADMIN_PASS")
+	if cfg.IcecastAdminPass == "" {
+		cfg.IcecastAdminPass = "hackme"
+	}
+	if m := os.Getenv("ICECAST_MOUNTS"); m != "" {
+		cfg.IcecastMounts = strings.Split(m, ",")
+	} else {
+		cfg.IcecastMounts = []string{"/main"}
+	}
+	cfg.GeoIPDatabasePath = os.Getenv("GEOIP_DB_PATH")
+
 	cfg.S3Endpoint = os.Getenv("S3_ENDPOINT")
 	cfg.S3Bucket = os.Getenv("S3_BUCKET")
 	cfg.S3Region = os.Getenv("S3_REGION")

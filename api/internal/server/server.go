@@ -11,6 +11,7 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"radioooooo/internal/analytics"
 	"radioooooo/internal/auth"
 	"radioooooo/internal/channel"
 	"radioooooo/internal/config"
@@ -26,7 +27,7 @@ type Server struct {
 	router http.Handler
 }
 
-func New(cfg *config.Config, db *pgxpool.Pool) *Server {
+func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.ListenerSource) *Server {
 	r := chi.NewMux()
 
 	r.Use(chiMiddleware.Logger)
@@ -86,6 +87,7 @@ func New(cfg *config.Config, db *pgxpool.Pool) *Server {
 	episode.NewHandler(episodeStore).Register(api)
 	media.NewHandler(mediaStore).Register(api)
 	playlist.NewHandler(playlistStore).Register(api)
+	analytics.NewHandler(analytics.NewStore(db), channelStore, listenerSource).Register(api)
 
 	return &Server{router: r}
 }
