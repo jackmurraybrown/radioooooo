@@ -19,6 +19,7 @@ import (
 	"radioooooo/internal/login"
 	"radioooooo/internal/media"
 	"radioooooo/internal/playlist"
+	"radioooooo/internal/show"
 	"radioooooo/internal/station"
 	"radioooooo/internal/user"
 )
@@ -45,6 +46,7 @@ func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.Listener
 	episodeStore := episode.NewStore(db)
 	mediaStore := media.NewStore(db)
 	playlistStore := playlist.NewStore(db)
+	showStore := show.NewStore(db)
 	userStore := user.NewStore(db)
 
 	// authMiddleware runs on every request. tries JWT first (no db hit), then
@@ -87,6 +89,7 @@ func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.Listener
 	episode.NewHandler(episodeStore).Register(api)
 	media.NewHandler(mediaStore).Register(api)
 	playlist.NewHandler(playlistStore).Register(api)
+	show.NewHandler(showStore).Register(api)
 	analytics.NewHandler(analytics.NewStore(db), channelStore, listenerSource).Register(api)
 
 	return &Server{router: r}
