@@ -42,6 +42,7 @@ create table shows (
     source_adapter   text        not null,
     source_ref       text        not null,
     allow_repeat     bool        not null default false,
+    contact_email    text,
     created_at       timestamptz not null default now(),
     updated_at       timestamptz not null default now()
 );
@@ -78,6 +79,7 @@ create table episodes (
     ical_feed_id   uuid        references ical_feeds(id) on delete set null,
     auto_filled    bool        not null default false,
     repeat_of      uuid        references episodes(id) on delete set null,
+    contact_email  text,
     created_at     timestamptz not null default now(),
     updated_at     timestamptz not null default now(),
     constraint episodes_end_after_start check (end_time > start_time)
@@ -99,6 +101,11 @@ create table repeat_airings (
     episode_id uuid        not null references episodes(id) on delete cascade,
     channel_id uuid        not null references channels(id) on delete cascade,
     aired_at   timestamptz not null default now()
+);
+
+create table sent_reminders (
+    episode_id uuid primary key references episodes(id) on delete cascade,
+    sent_at    timestamptz not null default now()
 );
 
 create index on api_keys  (station_id);

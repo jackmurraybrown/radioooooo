@@ -25,6 +25,11 @@ type Config struct {
 	IcecastAdminPass   string
 	IcecastMounts      []string
 	GeoIPDatabasePath  string
+	SMTPHost           string
+	SMTPPort           int
+	SMTPUsername       string
+	SMTPPassword       string
+	SMTPFrom           string
 }
 
 func Load() (*Config, error) {
@@ -84,6 +89,15 @@ func Load() (*Config, error) {
 	cfg.S3Region = os.Getenv("S3_REGION")
 	cfg.S3AccessKey = os.Getenv("S3_ACCESS_KEY")
 	cfg.S3SecretKey = os.Getenv("S3_SECRET_KEY")
+
+	cfg.SMTPHost = os.Getenv("SMTP_HOST")
+	cfg.SMTPPort = 587
+	if p := os.Getenv("SMTP_PORT"); p != "" {
+		fmt.Sscanf(p, "%d", &cfg.SMTPPort)
+	}
+	cfg.SMTPUsername = os.Getenv("SMTP_USERNAME")
+	cfg.SMTPPassword = os.Getenv("SMTP_PASSWORD")
+	cfg.SMTPFrom = os.Getenv("SMTP_FROM")
 
 	return cfg, nil
 }

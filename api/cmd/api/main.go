@@ -21,6 +21,7 @@ import (
 	"radioooooo/internal/ical"
 	"radioooooo/internal/jobs"
 	"radioooooo/internal/media"
+	"radioooooo/internal/notify"
 	"radioooooo/internal/playlist"
 	"radioooooo/internal/server"
 	"radioooooo/internal/show"
@@ -94,6 +95,13 @@ func main() {
 			},
 			nil,
 		),
+		river.NewPeriodicJob(
+			notify.DailyAt9AM{},
+			func() (river.JobArgs, *river.InsertOpts) {
+				return notify.ReminderArgs{}, nil
+			},
+			nil,
+		),
 	}
 
 	riverClient, err := jobs.NewClient(db, workers, periodic)
@@ -155,6 +163,23 @@ func main() {
 	river.AddWorker(workers, jobs.NewShowExpansionWorker(show.NewStore(db), station.NewStore(db)))
 	river.AddWorker(workers, ical.NewSyncWorker(ical.NewStore(db)))
 	river.AddWorker(workers, gapfill.NewFillWorker(gapfill.NewStore(db)))
+
+	// ⋆˙⟡ mailer — SMTP if configured, noop for dev
+	var mailer notify.Mailer
+	if cfg.SMTPHost != "" {
+		mailer = notify.NewSMTPMailer(notify.SMTPConfig{
+			Host:     cfg.SMTPHost,
+			Port:     cfg.SMTPPort,
+			Username: cfg.SMTPUsername,
+			Password: cfg.SMTPPassword,
+			From:     cfg.SMTPFrom,
+		})
+		slog.Info("mailer: smtp", "host", cfg.SMTPHost)
+	} else {
+		mailer = notify.NoopMailer{}
+		slog.Info("mailer: noop (no SMTP_HOST set)")
+	}
+	river.AddWorker(workers, notify.NewReminderWorker(db, mailer))
 	river.AddWorker(workers, analytics.NewGeoUpdateWorker(cfg.GeoIPDatabasePath, geoResolver))
 
 	// ⋆˙⟡ broadcast manager — one controller per channel

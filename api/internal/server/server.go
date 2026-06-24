@@ -22,6 +22,7 @@ import (
 	"radioooooo/internal/ical"
 	"radioooooo/internal/login"
 	"radioooooo/internal/media"
+	"radioooooo/internal/notify"
 	"radioooooo/internal/playlist"
 	"radioooooo/internal/show"
 	"radioooooo/internal/station"
@@ -100,8 +101,9 @@ func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.Listener
 	ical.NewHandler(ical.NewStore(db)).Register(api)
 	analytics.NewHandler(analytics.NewStore(db), channelStore, listenerSource).Register(api)
 
-	// ⊹ ࣪ ˖ public SSE — no auth, raw chi route
+	// ⊹ ࣪ ˖ public routes — no auth, raw chi
 	livenow.NewHandler(episodeStore).Register(r)
+	notify.NewICalFeedHandler(episodeStore).Register(r)
 
 	return &Server{router: r}
 }
