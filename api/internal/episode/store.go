@@ -8,10 +8,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+
 const cols = `
-	e.id::text, e.channel_id::text, e.title, e.description, e.image_ref,
-	e.start_time, e.end_time, e.type, e.source_adapter, e.source_ref,
-	e.created_at, e.updated_at`
+	e.id::text, e.channel_id::text, e.show_id::text, e.title, e.description, e.image_ref,
+	e.color, e.start_time, e.end_time, e.type, e.source_adapter, e.source_ref,
+	e.original_start, e.ical_uid, e.ical_feed_id::text,
+	e.auto_filled, e.repeat_of::text, e.created_at, e.updated_at`
 
 type Store struct {
 	db *pgxpool.Pool
@@ -49,8 +51,7 @@ func (s *Store) Create(ctx context.Context, p CreateParams) (Episode, error) {
 		insert into episodes (channel_id, title, description, start_time, end_time, type, source_adapter, source_ref)
 		select $1::uuid, $2, $3, $4, $5, $6, $7, $8
 		from channels where id = $1::uuid and station_id = $9::uuid
-		returning`+` id::text, channel_id::text, title, description, image_ref,
-		start_time, end_time, type, source_adapter, source_ref, created_at, updated_at`,
+		returning`+cols,
 		p.ChannelID, p.Title, p.Description, p.StartTime, p.EndTime, p.Type, p.SourceAdapter, p.SourceRef, p.StationID,
 	)
 	if err != nil {
@@ -93,9 +94,7 @@ func (s *Store) Update(ctx context.Context, id, channelID, stationID string, p U
 		from channels c
 		where e.id=$1::uuid and e.channel_id=$2::uuid
 		  and e.channel_id=c.id and c.station_id=$10::uuid
-		returning`+` e.id::text, e.channel_id::text, e.title, e.description, e.image_ref,
-		e.start_time, e.end_time, e.type, e.source_adapter, e.source_ref,
-		e.created_at, e.updated_at`,
+		returning`+cols,
 		id, channelID, p.Title, p.Description, p.StartTime, p.EndTime, p.Type, p.SourceAdapter, p.SourceRef, stationID,
 	)
 	if err != nil {
@@ -150,4 +149,35 @@ func (s *Store) Delete(ctx context.Context, id, channelID, stationID string) err
 		return pgx.ErrNoRows
 	}
 	return nil
+}
+
+// episodes overlapping a time range — for the public schedule range endpoint
+func (s *Store) ListRange(ctx context.Context, channelID string, start, end time.Time) ([]Episode, error) {
+	rows, err := s.db.Query(ctx, `
+		select`+cols+`
+		from episodes e
+		where e.channel_id = $1::uuid
+		  and e.start_time < $3 and e.end_time > $2
+		order by e.start_time asc
+	`, channelID, start, end)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByName[Episode])
+}
+
+// upcoming episodes from now, for the public schedule endpoint
+func (s *Store) ListUpcoming(ctx context.Context, channelID string, limit int) ([]Episode, error) {
+	rows, err := s.db.Query(ctx, `
+		select`+cols+`
+		from episodes e
+		where e.channel_id = $1::uuid
+		  and e.end_time > now()
+		order by e.start_time asc
+		limit $2
+	`, channelID, limit)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByName[Episode])
 }

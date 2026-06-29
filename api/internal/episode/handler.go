@@ -130,7 +130,7 @@ func (h *Handler) create(ctx context.Context, input *createInput) (*episodeOutpu
 		SourceRef:     input.Body.SourceRef,
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+if errors.Is(err, pgx.ErrNoRows) {
 			return nil, huma.Error404NotFound("channel not found")
 		}
 		slog.Error("failed to create episode", "error", err)
@@ -177,7 +177,7 @@ func (h *Handler) update(ctx context.Context, input *updateInput) (*episodeOutpu
 		SourceRef:     input.Body.SourceRef,
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+if errors.Is(err, pgx.ErrNoRows) {
 			return nil, huma.Error404NotFound("episode not found")
 		}
 		slog.Error("failed to update episode", "error", err)

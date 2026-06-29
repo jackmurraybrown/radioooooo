@@ -16,7 +16,16 @@ radio_source = crossfade(duration=1., radio_normalised)
 # ⋆.˚ ⊹₊⟡ live dj input — connect to port 8005, mount /live
 # djs connect here, not to icecast directly — keeps them in the fallback chain
 # when a dj drops, liquidsoap falls back to radio_source automatically
-live = input.harbor("live", port=8005, password="hackme")
+def auth(user, password) =
+  let r = http.post(
+    "http://api:8080/internal/harbor/auth",
+    headers=[("Content-Type", "application/json")],
+    data='{"user":"#{user}","password":"#{password}","mount":"/live"}'
+  )
+  r.status_code == 200
+end
+
+live = input.harbor("live", port=8005, auth=auth)
 
 # ٩(^ᗜ^ ) 1s fade on all source switches
 def fade(a, b) = sequence([fade.out(duration=1., a), b]) end

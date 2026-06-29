@@ -2,6 +2,14 @@ package media
 
 import "time"
 
+//river job args — lives here to avoid import cycles (jobs imports media)
+type LoudnessAnalysisArgs struct {
+	MediaID  string `json:"media_id"`
+	FilePath string `json:"file_path"`
+}
+
+func (LoudnessAnalysisArgs) Kind() string { return "loudness_analysis" }
+
 // --- constants ✦ ✧ ✦ ---
 
 const (

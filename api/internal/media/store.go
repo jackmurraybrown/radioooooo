@@ -118,6 +118,15 @@ func (s *Store) UpdateStatus(ctx context.Context, id, stationID, status string, 
 	return err
 }
 
+// sets local_ref and marks as ready after upload
+func (s *Store) SetLocalRef(ctx context.Context, id, localRef string) error {
+	_, err := s.db.Exec(ctx, `
+		update media set local_ref=$2, download_status='ready', updated_at=now()
+		where id=$1::uuid
+	`, id, localRef)
+	return err
+}
+
 // ⋆˙⟡ sets loudness + duration after ffmpeg analysis.
 func (s *Store) UpdateLoudness(ctx context.Context, id string, lufs, truePeak float64, duration *int) error {
 	_, err := s.db.Exec(ctx, `

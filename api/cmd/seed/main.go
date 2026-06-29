@@ -264,7 +264,7 @@ func run(ctx context.Context) error {
 
 	stations := station.NewStore(db)
 	users := user.NewStore(db)
-	channels := channel.NewStore(db)
+	channels := channel.NewStore(db, "")
 	media := media.NewStore(db)
 	episodes := episode.NewStore(db)
 

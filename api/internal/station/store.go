@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,7 +24,7 @@ func (s *Store) Create(ctx context.Context, name, slug string) (Station, error) 
 	rows, err := s.db.Query(ctx, `
 		INSERT INTO stations (name, slug)
 		VALUES ($1, $2)
-		RETURNING id::text, name, slug, logo_url, created_at, updated_at
+		RETURNING id::text, name, slug, timezone, season_end_date, default_show_horizon_days, logo_url, created_at, updated_at
 	`, name, slug)
 	if err != nil {
 		return Station{}, err
@@ -33,7 +34,7 @@ func (s *Store) Create(ctx context.Context, name, slug string) (Station, error) 
 
 func (s *Store) List(ctx context.Context) ([]Station, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id::text, name, slug, logo_url, created_at, updated_at
+		SELECT id::text, name, slug, timezone, season_end_date, default_show_horizon_days, logo_url, created_at, updated_at
 		FROM stations
 		ORDER BY created_at DESC
 	`)
@@ -45,7 +46,7 @@ func (s *Store) List(ctx context.Context) ([]Station, error) {
 
 func (s *Store) Get(ctx context.Context, id string) (Station, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id::text, name, slug, logo_url, created_at, updated_at
+		SELECT id::text, name, slug, timezone, season_end_date, default_show_horizon_days, logo_url, created_at, updated_at
 		FROM stations
 		WHERE id = $1::uuid
 	`, id)
@@ -56,18 +57,22 @@ func (s *Store) Get(ctx context.Context, id string) (Station, error) {
 }
 
 type UpdateParams struct {
-	Name    string
-	Slug    string
-	LogoURL *string
+	Name                   string
+	Slug                   string
+	Timezone               string
+	SeasonEndDate          *time.Time
+	DefaultShowHorizonDays int
+	LogoURL                *string
 }
 
 func (s *Store) Update(ctx context.Context, id string, p UpdateParams) (Station, error) {
 	rows, err := s.db.Query(ctx, `
 		UPDATE stations
-		SET name = $1, slug = $2, logo_url = $3, updated_at = now()
-		WHERE id = $4::uuid
-		RETURNING id::text, name, slug, logo_url, created_at, updated_at
-	`, p.Name, p.Slug, p.LogoURL, id)
+		SET name = $1, slug = $2, timezone = $3, season_end_date = $4,
+		    default_show_horizon_days = $5, logo_url = $6, updated_at = now()
+		WHERE id = $7::uuid
+		RETURNING id::text, name, slug, timezone, season_end_date, default_show_horizon_days, logo_url, created_at, updated_at
+	`, p.Name, p.Slug, p.Timezone, p.SeasonEndDate, p.DefaultShowHorizonDays, p.LogoURL, id)
 	if err != nil {
 		return Station{}, err
 	}
@@ -83,6 +88,31 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 		return pgx.ErrNoRows
 	}
 	return nil
+}
+
+// ⋆˙⟡ looks up the station timezone via a channel id
+func (s *Store) TimezoneForChannel(ctx context.Context, channelID string) (string, error) {
+	var tz string
+	err := s.db.QueryRow(ctx, `
+		select st.timezone from stations st
+		join channels c on c.station_id = st.id
+		where c.id = $1::uuid
+	`, channelID).Scan(&tz)
+	return tz, err
+}
+
+// ⊹ ࣪ ˖ returns station settings needed by the expansion job
+func (s *Store) SettingsForChannel(ctx context.Context, channelID string) (string, int, *time.Time, error) {
+	var tz string
+	var horizon int
+	var seasonEnd *time.Time
+	err := s.db.QueryRow(ctx, `
+		select st.timezone, st.default_show_horizon_days, st.season_end_date
+		from stations st
+		join channels c on c.station_id = st.id
+		where c.id = $1::uuid
+	`, channelID).Scan(&tz, &horizon, &seasonEnd)
+	return tz, horizon, seasonEnd, err
 }
 
 // CreateAPIKey generates a new api key for the station, stores its hash, and returns

@@ -17,10 +17,15 @@ import (
 	"radioooooo/internal/config"
 	"radioooooo/internal/database"
 	"radioooooo/internal/episode"
+	"radioooooo/internal/gapfill"
+	"radioooooo/internal/ical"
 	"radioooooo/internal/jobs"
 	"radioooooo/internal/media"
+	"radioooooo/internal/notify"
 	"radioooooo/internal/playlist"
 	"radioooooo/internal/server"
+	"radioooooo/internal/show"
+	"radioooooo/internal/station"
 	"radioooooo/internal/storage"
 )
 
@@ -69,6 +74,34 @@ func main() {
 			},
 			nil,
 		),
+		river.NewPeriodicJob(
+			river.PeriodicInterval(24*time.Hour),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return jobs.ShowExpansionArgs{}, nil
+			},
+			nil,
+		),
+		river.NewPeriodicJob(
+			river.PeriodicInterval(15*time.Minute),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return ical.SyncArgs{}, nil
+			},
+			nil,
+		),
+		river.NewPeriodicJob(
+			river.PeriodicInterval(24*time.Hour),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return gapfill.FillArgs{}, nil
+			},
+			nil,
+		),
+		river.NewPeriodicJob(
+			notify.DailyAt9AM{},
+			func() (river.JobArgs, *river.InsertOpts) {
+				return notify.ReminderArgs{}, nil
+			},
+			nil,
+		),
 	}
 
 	riverClient, err := jobs.NewClient(db, workers, periodic)
@@ -103,8 +136,6 @@ func main() {
 		store = ls
 		slog.Info("storage: local", "root", cfg.StorageLocalRoot)
 	}
-	_ = store
-
 	// ✮⋆‧° listener analytics
 	icecastSource := analytics.NewIcecastSource(analytics.IcecastConfig{
 		BaseURL:  cfg.IcecastURL,
@@ -126,28 +157,47 @@ func main() {
 	}
 
 	analyticsStore := analytics.NewStore(db)
-	channelStore := channel.NewStore(db)
+	channelStore := channel.NewStore(db, cfg.EncryptionKey)
 
 	river.AddWorker(workers, analytics.NewCollectorWorker(icecastSource, geoResolver, analyticsStore, channelStore))
+	river.AddWorker(workers, jobs.NewShowExpansionWorker(show.NewStore(db), station.NewStore(db)))
+	river.AddWorker(workers, ical.NewSyncWorker(ical.NewStore(db)))
+	river.AddWorker(workers, gapfill.NewFillWorker(gapfill.NewStore(db)))
+
+	// ⋆˙⟡ mailer — SMTP if configured, noop for dev
+	var mailer notify.Mailer
+	if cfg.SMTPHost != "" {
+		mailer = notify.NewSMTPMailer(notify.SMTPConfig{
+			Host:     cfg.SMTPHost,
+			Port:     cfg.SMTPPort,
+			Username: cfg.SMTPUsername,
+			Password: cfg.SMTPPassword,
+			From:     cfg.SMTPFrom,
+		})
+		slog.Info("mailer: smtp", "host", cfg.SMTPHost)
+	} else {
+		mailer = notify.NoopMailer{}
+		slog.Info("mailer: noop (no SMTP_HOST set)")
+	}
+	templateStore := notify.NewTemplateStore(db)
+	river.AddWorker(workers, notify.NewReminderWorker(db, mailer, templateStore))
 	river.AddWorker(workers, analytics.NewGeoUpdateWorker(cfg.GeoIPDatabasePath, geoResolver))
 
-	// ⋆˙⟡ broadcast controller
-	if cfg.LiquidsoapSocket != "" && cfg.BroadcastChannelID != "" {
+	// ⋆˙⟡ broadcast manager — one controller per channel
+	var mgr *broadcast.Manager
+	if cfg.LiquidsoapSocket != "" {
 		liq, err := broadcast.Dial(cfg.LiquidsoapSocket)
 		if err != nil {
-			slog.Warn("broadcast: liquidsoap not reachable, controller disabled", "error", err)
+			slog.Warn("broadcast: liquidsoap not reachable, controllers disabled", "error", err)
 		} else {
-			ctrl := broadcast.NewController(liq, episode.NewStore(db), media.NewStore(db), playlist.NewStore(db), cfg.BroadcastChannelID, "radio_queue")
-			go func() {
-				if err := ctrl.Run(ctx); err != nil && err != context.Canceled {
-					slog.Error("broadcast: controller exited", "error", err)
-				}
-			}()
-			slog.Info("broadcast: controller started", "channel", cfg.BroadcastChannelID)
+			mgr = broadcast.NewManager(liq, channelStore, episode.NewStore(db), media.NewStore(db), playlist.NewStore(db))
+			if err := mgr.Start(ctx); err != nil {
+				slog.Error("broadcast: manager start failed", "error", err)
+			}
 		}
 	}
 
-	srv := server.New(cfg, db, icecastSource)
+	srv := server.New(cfg, db, icecastSource, store, riverClient, mailer)
 
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Port),
@@ -178,6 +228,10 @@ func main() {
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		slog.Error("graceful shutdown failed", "error", err)
 		os.Exit(1)
+	}
+
+	if mgr != nil {
+		mgr.Stop()
 	}
 
 	if err := riverClient.Stop(shutdownCtx); err != nil {

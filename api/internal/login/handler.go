@@ -3,23 +3,28 @@ package login
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
+	"github.com/matcornic/hermes/v2"
 	"radioooooo/internal/auth"
+	"radioooooo/internal/notify"
 	"radioooooo/internal/user"
 )
 
-// Handler handles login, token refresh, and logout.
+// Handler handles login, token refresh, logout, and password reset ⋆˙⟡
 type Handler struct {
-	users  *user.Store
-	secret string
+	users    *user.Store
+	mailer   notify.Mailer
+	secret   string
+	frontURL string
 }
 
-func NewHandler(users *user.Store, secret string) *Handler {
-	return &Handler{users: users, secret: secret}
+func NewHandler(users *user.Store, mailer notify.Mailer, secret, frontURL string) *Handler {
+	return &Handler{users: users, mailer: mailer, secret: secret, frontURL: frontURL}
 }
 
 func (h *Handler) Register(api huma.API) {
@@ -47,6 +52,24 @@ func (h *Handler) Register(api huma.API) {
 		Tags:          []string{"Auth"},
 		DefaultStatus: http.StatusNoContent,
 	}, h.logout)
+
+	huma.Register(api, huma.Operation{
+		OperationID:   "forgot-password",
+		Method:        http.MethodPost,
+		Path:          "/auth/forgot-password",
+		Summary:       "Request a password reset email",
+		Tags:          []string{"Auth"},
+		DefaultStatus: http.StatusNoContent,
+	}, h.forgotPassword)
+
+	huma.Register(api, huma.Operation{
+		OperationID:   "reset-password",
+		Method:        http.MethodPost,
+		Path:          "/auth/reset-password",
+		Summary:       "Reset password with token",
+		Tags:          []string{"Auth"},
+		DefaultStatus: http.StatusNoContent,
+	}, h.resetPassword)
 }
 
 // --- types ˚₊✧ ---
@@ -67,6 +90,19 @@ type refreshInput struct {
 type logoutInput struct {
 	Body struct {
 		RefreshToken string `json:"refreshToken" minLength:"1"`
+	}
+}
+
+type forgotPasswordInput struct {
+	Body struct {
+		Email string `json:"email" format:"email"`
+	}
+}
+
+type resetPasswordInput struct {
+	Body struct {
+		Token       string `json:"token"       minLength:"1"`
+		NewPassword string `json:"newPassword" minLength:"8"`
 	}
 }
 
@@ -136,6 +172,69 @@ func (h *Handler) logout(ctx context.Context, input *logoutInput) (*struct{}, er
 			slog.Error("logout: delete token", "error", err)
 			return nil, huma.Error500InternalServerError("internal error")
 		}
+	}
+	return nil, nil
+}
+
+// ⊹ ࣪ ˖ always returns 204 even if email not found — no user enumeration
+func (h *Handler) forgotPassword(ctx context.Context, input *forgotPasswordInput) (*struct{}, error) {
+	u, _, err := h.users.GetByEmail(ctx, input.Body.Email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		slog.Error("forgot-password: lookup", "error", err)
+		return nil, huma.Error500InternalServerError("internal error")
+	}
+
+	token, err := h.users.CreatePasswordResetToken(ctx, u.ID)
+	if err != nil {
+		slog.Error("forgot-password: create token", "error", err)
+		return nil, huma.Error500InternalServerError("internal error")
+	}
+
+	resetURL := fmt.Sprintf("%s/reset-password?token=%s", h.frontURL, token)
+
+	html, plain, err := notify.RenderPlatformEmail(hermes.Email{
+		Body: hermes.Body{
+			Intros: []string{
+				"someone requested a password reset for your account.",
+			},
+			Actions: []hermes.Action{
+				{
+					Instructions: "click the button below to reset your password:",
+					Button: hermes.Button{
+						Text: "reset password",
+						Link: resetURL,
+					},
+				},
+			},
+			Outros: []string{
+				"this link expires in 1 hour. if you didn't request this, ignore this email.",
+			},
+		},
+	})
+	if err != nil {
+		slog.Error("forgot-password: render", "error", err)
+		return nil, huma.Error500InternalServerError("internal error")
+	}
+
+	if err := h.mailer.Send(ctx, u.Email, "reset your password", html, plain); err != nil {
+		slog.Error("forgot-password: send", "error", err)
+		return nil, huma.Error500InternalServerError("internal error")
+	}
+
+	slog.Info("forgot-password: sent", "to", u.Email)
+	return nil, nil
+}
+
+func (h *Handler) resetPassword(ctx context.Context, input *resetPasswordInput) (*struct{}, error) {
+	if err := h.users.ResetPassword(ctx, input.Body.Token, input.Body.NewPassword); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, huma.Error400BadRequest("invalid or expired token")
+		}
+		slog.Error("reset-password: reset", "error", err)
+		return nil, huma.Error500InternalServerError("internal error")
 	}
 	return nil, nil
 }

@@ -20,14 +20,8 @@ import (
 // https://wiki.hydrogenaud.io/index.php?title=ReplayGain_2.0_specification
 const TargetLUFS = -18.0
 
-type LoudnessAnalysisArgs struct {
-	MediaID string `json:"media_id"`
-}
-
-func (LoudnessAnalysisArgs) Kind() string { return "loudness_analysis" }
-
 type LoudnessAnalysisWorker struct {
-	river.WorkerDefaults[LoudnessAnalysisArgs]
+	river.WorkerDefaults[media.LoudnessAnalysisArgs]
 	store *media.Store
 }
 
@@ -35,28 +29,23 @@ func NewLoudnessAnalysisWorker(store *media.Store) *LoudnessAnalysisWorker {
 	return &LoudnessAnalysisWorker{store: store}
 }
 
-func (w *LoudnessAnalysisWorker) Work(ctx context.Context, job *river.Job[LoudnessAnalysisArgs]) error {
-	result, err := analyseLoudness(ctx, job.Args.MediaID)
+func (w *LoudnessAnalysisWorker) Work(ctx context.Context, job *river.Job[media.LoudnessAnalysisArgs]) error {
+	result, err := analyseLoudness(ctx, job.Args.FilePath)
 	if err != nil {
 		slog.Error("loudness: ffmpeg analysis failed", "media", job.Args.MediaID, "error", err)
 		return err
 	}
 
-	duration, err := probeDuration(ctx, job.Args.MediaID)
+	duration, err := probeDuration(ctx, job.Args.FilePath)
 	if err != nil {
-		slog.Warn("loudness: duration probe failed, storing loudness only", "media", job.Args.MediaID, "error", err)
+		slog.Warn("loudness: duration probe failed", "media", job.Args.MediaID, "error", err)
 	}
 
 	if err := w.store.UpdateLoudness(ctx, job.Args.MediaID, result.InputI, result.InputTP, duration); err != nil {
 		return fmt.Errorf("loudness: db update failed: %w", err)
 	}
 
-	slog.Info("loudness: analysis complete",
-		"media", job.Args.MediaID,
-		"lufs", result.InputI,
-		"true_peak", result.InputTP,
-		"duration", duration,
-	)
+	slog.Info("loudness: analysis complete", "media", job.Args.MediaID, "lufs", result.InputI, "duration", duration)
 	return nil
 }
 

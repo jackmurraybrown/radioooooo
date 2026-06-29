@@ -4,10 +4,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/httprate"
+	"github.com/jackc/pgx/v5"
+	"github.com/riverqueue/river"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -16,10 +20,15 @@ import (
 	"radioooooo/internal/channel"
 	"radioooooo/internal/config"
 	"radioooooo/internal/episode"
+	"radioooooo/internal/livenow"
+	"radioooooo/internal/ical"
 	"radioooooo/internal/login"
 	"radioooooo/internal/media"
+	"radioooooo/internal/notify"
 	"radioooooo/internal/playlist"
+	"radioooooo/internal/show"
 	"radioooooo/internal/station"
+	"radioooooo/internal/storage"
 	"radioooooo/internal/user"
 )
 
@@ -27,7 +36,7 @@ type Server struct {
 	router http.Handler
 }
 
-func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.ListenerSource) *Server {
+func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.ListenerSource, files storage.Store, rc *river.Client[pgx.Tx], mailer notify.Mailer) *Server {
 	r := chi.NewMux()
 
 	r.Use(chiMiddleware.Logger)
@@ -41,10 +50,11 @@ func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.Listener
 	}))
 
 	stationStore := station.NewStore(db)
-	channelStore := channel.NewStore(db)
+	channelStore := channel.NewStore(db, cfg.EncryptionKey)
 	episodeStore := episode.NewStore(db)
 	mediaStore := media.NewStore(db)
 	playlistStore := playlist.NewStore(db)
+	showStore := show.NewStore(db)
 	userStore := user.NewStore(db)
 
 	// authMiddleware runs on every request. tries JWT first (no db hit), then
@@ -80,14 +90,26 @@ func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.Listener
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
-	login.NewHandler(userStore, cfg.JWTSecret).Register(api)
+	login.NewHandler(userStore, mailer, cfg.JWTSecret, cfg.FrontURL).Register(api)
 	station.NewHandler(stationStore, userStore, channelStore, cfg.JWTSecret).Register(api)
 	user.NewHandler(userStore).Register(api)
 	channel.NewHandler(channelStore).Register(api)
 	episode.NewHandler(episodeStore).Register(api)
-	media.NewHandler(mediaStore).Register(api)
+	mediaHandler := media.NewHandler(mediaStore, files, rc)
+	mediaHandler.Register(api)
+	mediaHandler.RegisterUpload(r)
 	playlist.NewHandler(playlistStore).Register(api)
+	show.NewHandler(showStore, stationStore).Register(api)
+	ical.NewHandler(ical.NewStore(db)).Register(api)
 	analytics.NewHandler(analytics.NewStore(db), channelStore, listenerSource).Register(api)
+	notify.NewTemplateHandler(notify.NewTemplateStore(db)).Register(api)
+
+	// ⊹ ࣪ ˖ public routes — rate limited, no auth
+	r.Group(func(pub chi.Router) {
+		pub.Use(httprate.LimitByIP(60, time.Minute))
+		livenow.NewHandler(episodeStore).Register(pub)
+		notify.NewICalFeedHandler(episodeStore).Register(pub)
+	})
 
 	return &Server{router: r}
 }
