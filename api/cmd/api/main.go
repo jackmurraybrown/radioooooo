@@ -196,7 +196,7 @@ func main() {
 		}
 	}
 
-	srv := server.New(cfg, db, icecastSource, store, riverClient)
+	srv := server.New(cfg, db, icecastSource, store, riverClient, mailer)
 
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Port),

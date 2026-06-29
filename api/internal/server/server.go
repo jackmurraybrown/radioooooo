@@ -34,7 +34,7 @@ type Server struct {
 	router http.Handler
 }
 
-func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.ListenerSource, files storage.Store, rc *river.Client[pgx.Tx]) *Server {
+func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.ListenerSource, files storage.Store, rc *river.Client[pgx.Tx], mailer notify.Mailer) *Server {
 	r := chi.NewMux()
 
 	r.Use(chiMiddleware.Logger)
@@ -88,7 +88,7 @@ func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.Listener
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
-	login.NewHandler(userStore, cfg.JWTSecret).Register(api)
+	login.NewHandler(userStore, mailer, cfg.JWTSecret, cfg.FrontURL).Register(api)
 	station.NewHandler(stationStore, userStore, channelStore, cfg.JWTSecret).Register(api)
 	user.NewHandler(userStore).Register(api)
 	channel.NewHandler(channelStore).Register(api)

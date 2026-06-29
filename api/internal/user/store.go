@@ -208,6 +208,63 @@ func (s *Store) DeleteRefreshToken(ctx context.Context, plain string) error {
 	return nil
 }
 
+const resetTokenDuration = 1 * time.Hour
+
+// CreatePasswordResetToken generates a token for password reset, valid for 1 hour.
+// deletes any existing tokens for the user first ✮⋆‧°
+func (s *Store) CreatePasswordResetToken(ctx context.Context, userID string) (string, error) {
+	if _, err := s.db.Exec(ctx, `
+		delete from password_reset_tokens where user_id = $1::uuid
+	`, userID); err != nil {
+		return "", err
+	}
+	plain, hash, err := generateToken()
+	if err != nil {
+		return "", err
+	}
+	_, err = s.db.Exec(ctx, `
+		insert into password_reset_tokens (user_id, token_hash, expires_at)
+		values ($1::uuid, $2, $3)
+	`, userID, hash, time.Now().Add(resetTokenDuration))
+	return plain, err
+}
+
+// ResetPassword validates a reset token and sets the new password.
+// the token is consumed on success ⋆˙⟡
+func (s *Store) ResetPassword(ctx context.Context, token, newPassword string) error {
+	hash := hashToken(token)
+
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var userID string
+	err = tx.QueryRow(ctx, `
+		delete from password_reset_tokens
+		where token_hash = $1 and expires_at > now()
+		returning user_id::text
+	`, hash).Scan(&userID)
+	if err != nil {
+		return err
+	}
+
+	pwHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `
+		update users set password_hash = $2, updated_at = now()
+		where id = $1::uuid
+	`, userID, string(pwHash))
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
 func generateToken() (plain, hash string, err error) {
 	b := make([]byte, 32)
 	if _, err = rand.Read(b); err != nil {

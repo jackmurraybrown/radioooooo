@@ -30,6 +30,7 @@ type Config struct {
 	SMTPUsername       string
 	SMTPPassword       string
 	SMTPFrom           string
+	FrontURL           string
 }
 
 func Load() (*Config, error) {
@@ -98,6 +99,11 @@ func Load() (*Config, error) {
 	cfg.SMTPUsername = os.Getenv("SMTP_USERNAME")
 	cfg.SMTPPassword = os.Getenv("SMTP_PASSWORD")
 	cfg.SMTPFrom = os.Getenv("SMTP_FROM")
+
+	cfg.FrontURL = os.Getenv("FRONT_URL")
+	if cfg.FrontURL == "" {
+		cfg.FrontURL = "http://localhost:5173"
+	}
 
 	return cfg, nil
 }

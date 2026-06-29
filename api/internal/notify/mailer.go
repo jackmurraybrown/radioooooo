@@ -10,7 +10,7 @@ import (
 )
 
 type Mailer interface {
-	Send(ctx context.Context, to, subject, bodyHTML string) error
+	Send(ctx context.Context, to, subject, bodyHTML, bodyPlain string) error
 }
 
 type SMTPConfig struct {
@@ -29,7 +29,7 @@ func NewSMTPMailer(cfg SMTPConfig) *SMTPMailer {
 	return &SMTPMailer{cfg: cfg}
 }
 
-func (m *SMTPMailer) Send(ctx context.Context, to, subject, bodyHTML string) error {
+func (m *SMTPMailer) Send(ctx context.Context, to, subject, bodyHTML, bodyPlain string) error {
 	msg := mail.NewMsg()
 	if err := msg.From(m.cfg.From); err != nil {
 		return fmt.Errorf("mail from: %w", err)
@@ -39,6 +39,9 @@ func (m *SMTPMailer) Send(ctx context.Context, to, subject, bodyHTML string) err
 	}
 	msg.Subject(subject)
 	msg.SetBodyString(mail.TypeTextHTML, bodyHTML)
+	if bodyPlain != "" {
+		msg.AddAlternativeString(mail.TypeTextPlain, bodyPlain)
+	}
 
 	client, err := mail.NewClient(m.cfg.Host,
 		mail.WithPort(m.cfg.Port),
@@ -61,7 +64,7 @@ func (m *SMTPMailer) Send(ctx context.Context, to, subject, bodyHTML string) err
 // ⋆˙⟡ no-op mailer for dev/testing
 type NoopMailer struct{}
 
-func (NoopMailer) Send(_ context.Context, to, subject, _ string) error {
+func (NoopMailer) Send(_ context.Context, to, subject, _, _ string) error {
 	fmt.Printf("mail [noop]: to=%s subject=%s\n", to, subject)
 	return nil
 }

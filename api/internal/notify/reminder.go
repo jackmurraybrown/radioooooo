@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/matcornic/hermes/v2"
 	"github.com/riverqueue/river"
 )
 
@@ -34,13 +35,18 @@ type upcomingEpisode struct {
 	Title        string    `db:"title"`
 	StartTime    time.Time `db:"start_time"`
 	ContactEmail string    `db:"contact_email"`
+	StationName  string    `db:"station_name"`
+	LogoURL      *string   `db:"logo_url"`
 }
 
 func (w *ReminderWorker) Work(ctx context.Context, job *river.Job[ReminderArgs]) error {
-	// find episodes starting in the next 10 days that also haven't been reminded
+	// find episodes starting in the next 10 days that haven't been reminded ⊹ ˖
 	rows, err := w.db.Query(ctx, `
-		select e.id::text, e.channel_id::text, e.title, e.start_time, e.contact_email
+		select e.id::text, e.channel_id::text, e.title, e.start_time, e.contact_email,
+		       st.name as station_name, st.logo_url
 		from episodes e
+		join channels c on c.id = e.channel_id
+		join stations st on st.id = c.station_id
 		where e.start_time > now()
 		  and e.start_time <= now() + interval '10 days'
 		  and e.contact_email is not null
@@ -59,12 +65,25 @@ func (w *ReminderWorker) Work(ctx context.Context, job *river.Job[ReminderArgs])
 		daysUntil := int(time.Until(ep.StartTime).Hours() / 24)
 
 		subject := fmt.Sprintf("your show \"%s\" is in %d days", ep.Title, daysUntil)
-		body := fmt.Sprintf(
-			`<p>your show <strong>%s</strong> is scheduled in %d days (%s).</p>`,
-			ep.Title, daysUntil, ep.StartTime.Format("Mon 2 Jan at 15:04 UTC"),
-		)
 
-		if err := w.mailer.Send(ctx, ep.ContactEmail, subject, body); err != nil {
+		logoURL := ""
+		if ep.LogoURL != nil {
+			logoURL = *ep.LogoURL
+		}
+		html, plain, err := RenderStationEmail(ep.StationName, logoURL, hermes.Email{
+			Body: hermes.Body{
+				Intros: []string{
+					fmt.Sprintf("your show **%s** is scheduled in %d days (%s).",
+						ep.Title, daysUntil, ep.StartTime.Format("Mon 2 Jan at 15:04 UTC")),
+				},
+			},
+		})
+		if err != nil {
+			slog.Error("reminder: render failed", "episode", ep.ID, "error", err)
+			continue
+		}
+
+		if err := w.mailer.Send(ctx, ep.ContactEmail, subject, html, plain); err != nil {
 			slog.Error("reminder: send failed", "episode", ep.ID, "to", ep.ContactEmail, "error", err)
 			continue
 		}
