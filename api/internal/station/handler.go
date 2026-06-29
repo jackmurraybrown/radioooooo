@@ -69,6 +69,15 @@ func (h *Handler) Register(api huma.API) {
 		Security:      []map[string][]string{{"bearerAuth": {}}},
 		DefaultStatus: http.StatusNoContent,
 	}, h.delete)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "rotate-api-key",
+		Method:      http.MethodPost,
+		Path:        "/stations/{id}/api-key",
+		Summary:     "Rotate API key — revokes old key, returns new one",
+		Tags:        []string{"Stations"},
+		Security:    []map[string][]string{{"bearerAuth": {}}},
+	}, h.rotateAPIKey)
 }
 
 // --- types ---
@@ -238,4 +247,26 @@ func (h *Handler) delete(ctx context.Context, input *deleteInput) (*struct{}, er
 		return nil, huma.Error500InternalServerError("internal error")
 	}
 	return nil, nil
+}
+
+type apiKeyOutput struct {
+	Body struct {
+		APIKey string `json:"apiKey" doc:"store securely — shown only once"`
+	}
+}
+
+// ⋆˙⟡ revokes old key, issues new one
+func (h *Handler) rotateAPIKey(ctx context.Context, input *deleteInput) (*apiKeyOutput, error) {
+	authedID, ok := auth.StationIDFromContext(ctx)
+	if !ok || authedID != input.ID {
+		return nil, huma.Error403Forbidden("forbidden")
+	}
+	key, err := h.store.RotateAPIKey(ctx, input.ID)
+	if err != nil {
+		slog.Error("failed to rotate api key", "error", err)
+		return nil, huma.Error500InternalServerError("internal error")
+	}
+	out := &apiKeyOutput{}
+	out.Body.APIKey = key
+	return out, nil
 }
