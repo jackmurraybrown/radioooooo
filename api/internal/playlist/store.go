@@ -185,10 +185,13 @@ func (s *Store) AddItem(ctx context.Context, playlistID, mediaID, stationID stri
 }
 
 // RemoveItem deletes a playlist item. returns pgx.ErrNoRows if not found.
-func (s *Store) RemoveItem(ctx context.Context, itemID, playlistID string) error {
+func (s *Store) RemoveItem(ctx context.Context, itemID, playlistID, stationID string) error {
 	result, err := s.db.Exec(ctx, `
-		delete from playlist_items where id = $1::uuid and playlist_id = $2::uuid
-	`, itemID, playlistID)
+		delete from playlist_items pi
+		using playlists p
+		where pi.id = $1::uuid and pi.playlist_id = $2::uuid
+		  and p.id = pi.playlist_id and p.station_id = $3::uuid
+	`, itemID, playlistID, stationID)
 	if err != nil {
 		return err
 	}

@@ -61,8 +61,9 @@ type templateUpsertOutput struct {
 }
 
 func (h *TemplateHandler) get(ctx context.Context, input *templateGetInput) (*templateGetOutput, error) {
-	if _, ok := auth.StationIDFromContext(ctx); !ok {
-		return nil, huma.Error403Forbidden("not authenticated")
+	stationID, ok := auth.StationIDFromContext(ctx)
+	if !ok || stationID != input.ID {
+		return nil, huma.Error403Forbidden("forbidden")
 	}
 	tmpl, err := h.store.Get(ctx, input.ID, input.Type)
 	if err != nil {

@@ -54,6 +54,21 @@ func (s *Store) List(ctx context.Context, channelID string) ([]Feed, error) {
 	return pgx.CollectRows(rows, pgx.RowToStructByName[Feed])
 }
 
+// ⊹ ˖ scoped list — verifies channel belongs to station
+func (s *Store) ListByChannel(ctx context.Context, channelID, stationID string) ([]Feed, error) {
+	rows, err := s.db.Query(ctx, `
+		select`+cols+`
+		from ical_feeds f
+		join channels c on c.id = f.channel_id
+		where f.channel_id = $1::uuid and c.station_id = $2::uuid
+		order by f.created_at asc
+	`, channelID, stationID)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByName[Feed])
+}
+
 func (s *Store) Delete(ctx context.Context, id, stationID string) error {
 	result, err := s.db.Exec(ctx, `
 		delete from ical_feeds where id = $1::uuid and station_id = $2::uuid
