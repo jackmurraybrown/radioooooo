@@ -6,6 +6,7 @@ create table stations (
     season_end_date           date,
     default_show_horizon_days int         not null default 90,
     logo_url                  text,
+    tracklist_webhook_url     text,
     created_at                timestamptz not null default now(),
     updated_at                timestamptz not null default now()
 );
@@ -130,3 +131,19 @@ create unique index on episodes (ical_feed_id, ical_uid) where ical_uid is not n
 create index on ical_feeds (channel_id);
 create index on gap_fill_rules (channel_id, priority);
 create index on repeat_airings (channel_id, aired_at);
+
+create table tracklist_tokens (
+    id         uuid        primary key default gen_random_uuid(),
+    episode_id uuid        not null references episodes(id) on delete cascade,
+    token_hash text        not null unique,
+    expires_at timestamptz not null,
+    created_at timestamptz not null default now()
+);
+
+create index on tracklist_tokens (token_hash);
+create index on tracklist_tokens (episode_id);
+
+create table sent_tracklist_emails (
+    episode_id uuid primary key references episodes(id) on delete cascade,
+    sent_at    timestamptz not null default now()
+);

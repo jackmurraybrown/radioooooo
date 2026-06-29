@@ -24,6 +24,7 @@ import (
 	"radioooooo/internal/notify"
 	"radioooooo/internal/playlist"
 	"radioooooo/internal/server"
+	"radioooooo/internal/tracklist"
 	"radioooooo/internal/show"
 	"radioooooo/internal/station"
 	"radioooooo/internal/storage"
@@ -99,6 +100,13 @@ func main() {
 			notify.DailyAt9AM{},
 			func() (river.JobArgs, *river.InsertOpts) {
 				return notify.ReminderArgs{}, nil
+			},
+			nil,
+		),
+		river.NewPeriodicJob(
+			notify.DailyAt9AM{},
+			func() (river.JobArgs, *river.InsertOpts) {
+				return notify.TracklistEmailArgs{}, nil
 			},
 			nil,
 		),
@@ -180,7 +188,9 @@ func main() {
 		slog.Info("mailer: noop (no SMTP_HOST set)")
 	}
 	templateStore := notify.NewTemplateStore(db)
+	tracklistStore := tracklist.NewStore(db)
 	river.AddWorker(workers, notify.NewReminderWorker(db, mailer, templateStore))
+	river.AddWorker(workers, notify.NewTracklistEmailWorker(db, mailer, templateStore, tracklistStore, cfg.FrontURL))
 	river.AddWorker(workers, analytics.NewGeoUpdateWorker(cfg.GeoIPDatabasePath, geoResolver))
 
 	// ⋆˙⟡ broadcast manager — one controller per channel
