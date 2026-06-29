@@ -1,7 +1,6 @@
 package broadcast
 
 // . ݁₊ ✶ broadcast manager — spawns one controller per channel
-// replaces the single hardcoded BROADCAST_CHANNEL_ID
 
 import (
 	"context"
