@@ -1,4 +1,10 @@
+drop table if exists email_templates;
+drop table if exists sent_reminders;
+drop table if exists repeat_airings;
+drop table if exists gap_fill_rules;
 drop table if exists episodes;
+drop table if exists ical_feeds;
+drop table if exists shows;
 drop table if exists channels;
 drop table if exists api_keys;
 drop table if exists stations;

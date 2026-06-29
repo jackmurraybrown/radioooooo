@@ -4,9 +4,11 @@ package notify
 // runs once daily at 9am UTC
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
+	"text/template"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -21,17 +23,27 @@ func (ReminderArgs) Kind() string { return "show_reminder" }
 
 type ReminderWorker struct {
 	river.WorkerDefaults[ReminderArgs]
-	db     *pgxpool.Pool
-	mailer Mailer
+	db        *pgxpool.Pool
+	mailer    Mailer
+	templates *TemplateStore
 }
 
-func NewReminderWorker(db *pgxpool.Pool, mailer Mailer) *ReminderWorker {
-	return &ReminderWorker{db: db, mailer: mailer}
+func NewReminderWorker(db *pgxpool.Pool, mailer Mailer, templates *TemplateStore) *ReminderWorker {
+	return &ReminderWorker{db: db, mailer: mailer, templates: templates}
+}
+
+// ⋆˙⟡ template variables available to station admins
+type reminderVars struct {
+	Title       string
+	DaysUntil   int
+	StartTime   string
+	StationName string
 }
 
 type upcomingEpisode struct {
 	ID           string    `db:"id"`
 	ChannelID    string    `db:"channel_id"`
+	StationID    string    `db:"station_id"`
 	Title        string    `db:"title"`
 	StartTime    time.Time `db:"start_time"`
 	ContactEmail string    `db:"contact_email"`
@@ -42,7 +54,8 @@ type upcomingEpisode struct {
 func (w *ReminderWorker) Work(ctx context.Context, job *river.Job[ReminderArgs]) error {
 	// find episodes starting in the next 10 days that haven't been reminded ⊹ ˖
 	rows, err := w.db.Query(ctx, `
-		select e.id::text, e.channel_id::text, e.title, e.start_time, e.contact_email,
+		select e.id::text, e.channel_id::text, st.id::text as station_id,
+		       e.title, e.start_time, e.contact_email,
 		       st.name as station_name, st.logo_url
 		from episodes e
 		join channels c on c.id = e.channel_id
@@ -64,7 +77,25 @@ func (w *ReminderWorker) Work(ctx context.Context, job *river.Job[ReminderArgs])
 	for _, ep := range episodes {
 		daysUntil := int(time.Until(ep.StartTime).Hours() / 24)
 
-		subject := fmt.Sprintf("your show \"%s\" is in %d days", ep.Title, daysUntil)
+		vars := reminderVars{
+			Title:       ep.Title,
+			DaysUntil:   daysUntil,
+			StartTime:   ep.StartTime.Format("Mon 2 Jan at 15:04 UTC"),
+			StationName: ep.StationName,
+		}
+
+		tmpl, _ := w.templates.Get(ctx, ep.StationID, "show_reminder")
+		subject, err := renderTemplate(tmpl.Subject, vars)
+		if err != nil {
+			slog.Error("reminder: render subject", "episode", ep.ID, "error", err)
+			subject = fmt.Sprintf("your show \"%s\" is in %d days", ep.Title, daysUntil)
+		}
+		bodyMd, err := renderTemplate(tmpl.Body, vars)
+		if err != nil {
+			slog.Error("reminder: render body", "episode", ep.ID, "error", err)
+			bodyMd = fmt.Sprintf("your show **%s** is scheduled in %d days (%s).",
+				ep.Title, daysUntil, vars.StartTime)
+		}
 
 		logoURL := ""
 		if ep.LogoURL != nil {
@@ -72,10 +103,7 @@ func (w *ReminderWorker) Work(ctx context.Context, job *river.Job[ReminderArgs])
 		}
 		html, plain, err := RenderStationEmail(ep.StationName, logoURL, hermes.Email{
 			Body: hermes.Body{
-				Intros: []string{
-					fmt.Sprintf("your show **%s** is scheduled in %d days (%s).",
-						ep.Title, daysUntil, ep.StartTime.Format("Mon 2 Jan at 15:04 UTC")),
-				},
+				FreeMarkdown: hermes.Markdown(bodyMd),
 			},
 		})
 		if err != nil {
@@ -108,4 +136,16 @@ func (DailyAt9AM) Next(after time.Time) time.Time {
 		next = next.AddDate(0, 0, 1)
 	}
 	return next
+}
+
+func renderTemplate(tmplStr string, data reminderVars) (string, error) {
+	t, err := template.New("").Parse(tmplStr)
+	if err != nil {
+		return "", fmt.Errorf("parse: %w", err)
+	}
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("exec: %w", err)
+	}
+	return buf.String(), nil
 }

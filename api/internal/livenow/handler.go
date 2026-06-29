@@ -28,11 +28,17 @@ type ShowInfo struct {
 }
 
 type Handler struct {
-	episodes *episode.Store
+	episodes      *episode.Store
+	nowCache      *cache[State]
+	scheduleCache *cache[[]episode.Episode]
 }
 
 func NewHandler(episodes *episode.Store) *Handler {
-	return &Handler{episodes: episodes}
+	return &Handler{
+		episodes:      episodes,
+		nowCache:      newCache[State](5 * time.Second),
+		scheduleCache: newCache[[]episode.Episode](60 * time.Second),
+	}
 }
 
 // registers as raw chi routes (SSE + public REST — not behind auth)
@@ -109,9 +115,17 @@ func (h *Handler) sendState(ctx context.Context, w http.ResponseWriter, flusher 
 	flusher.Flush()
 }
 
-// one-shot current state — for clients that don't need SSE
+// one-shot current state — for clients that don't need SSE ✮ ⋆ ˚
 func (h *Handler) now(w http.ResponseWriter, r *http.Request) {
 	channelID := chi.URLParam(r, "id")
+
+	if cached, ok := h.nowCache.get(channelID); ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		json.NewEncoder(w).Encode(cached)
+		return
+	}
+
 	ep, err := h.episodes.GetCurrent(r.Context(), channelID)
 
 	var state State
@@ -125,6 +139,7 @@ func (h *Handler) now(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	h.nowCache.set(channelID, state)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(w).Encode(state)
@@ -133,16 +148,25 @@ func (h *Handler) now(w http.ResponseWriter, r *http.Request) {
 // ⋆˙upcoming episodes for the embeddable player
 func (h *Handler) schedule(w http.ResponseWriter, r *http.Request) {
 	channelID := chi.URLParam(r, "id")
-	episodes, err := h.episodes.ListUpcoming(r.Context(), channelID, 20)
 
 	type scheduleResponse struct {
 		Episodes []episode.Episode `json:"episodes"`
 	}
 
+	if cached, ok := h.scheduleCache.get(channelID); ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		json.NewEncoder(w).Encode(scheduleResponse{Episodes: cached})
+		return
+	}
+
+	episodes, err := h.episodes.ListUpcoming(r.Context(), channelID, 20)
 	resp := scheduleResponse{Episodes: episodes}
 	if err != nil {
 		slog.Error("livenow: schedule query failed", "error", err)
 		resp.Episodes = []episode.Episode{}
+	} else {
+		h.scheduleCache.set(channelID, episodes)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

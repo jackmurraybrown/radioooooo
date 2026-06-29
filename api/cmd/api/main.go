@@ -179,7 +179,8 @@ func main() {
 		mailer = notify.NoopMailer{}
 		slog.Info("mailer: noop (no SMTP_HOST set)")
 	}
-	river.AddWorker(workers, notify.NewReminderWorker(db, mailer))
+	templateStore := notify.NewTemplateStore(db)
+	river.AddWorker(workers, notify.NewReminderWorker(db, mailer, templateStore))
 	river.AddWorker(workers, analytics.NewGeoUpdateWorker(cfg.GeoIPDatabasePath, geoResolver))
 
 	// ⋆˙⟡ broadcast manager — one controller per channel

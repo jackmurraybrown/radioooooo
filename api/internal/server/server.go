@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/httprate"
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
@@ -100,10 +102,14 @@ func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.Listener
 	show.NewHandler(showStore, stationStore).Register(api)
 	ical.NewHandler(ical.NewStore(db)).Register(api)
 	analytics.NewHandler(analytics.NewStore(db), channelStore, listenerSource).Register(api)
+	notify.NewTemplateHandler(notify.NewTemplateStore(db)).Register(api)
 
-	// ⊹ ࣪ ˖ public routes — no auth, raw chi
-	livenow.NewHandler(episodeStore).Register(r)
-	notify.NewICalFeedHandler(episodeStore).Register(r)
+	// ⊹ ࣪ ˖ public routes — rate limited, no auth
+	r.Group(func(pub chi.Router) {
+		pub.Use(httprate.LimitByIP(60, time.Minute))
+		livenow.NewHandler(episodeStore).Register(pub)
+		notify.NewICalFeedHandler(episodeStore).Register(pub)
+	})
 
 	return &Server{router: r}
 }

@@ -108,6 +108,17 @@ create table sent_reminders (
     sent_at    timestamptz not null default now()
 );
 
+create table email_templates (
+    id         uuid        primary key default gen_random_uuid(),
+    station_id uuid        not null references stations(id) on delete cascade,
+    type       text        not null,
+    subject    text        not null,
+    body       text        not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    unique (station_id, type)
+);
+
 create index on api_keys  (station_id);
 create index on api_keys  (key_hash);
 create index on channels  (station_id);

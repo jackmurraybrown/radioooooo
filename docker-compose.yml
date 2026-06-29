@@ -58,5 +58,12 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    restart: unless-stopped
+
 volumes:
   postgres_data:
