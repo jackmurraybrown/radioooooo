@@ -11,6 +11,12 @@ const router = createRouter({
       meta: { public: true },
     },
     {
+      path: '/tracklist/:token',
+      name: 'tracklist',
+      component: () => import('@/views/TracklistView.vue'),
+      meta: { public: true },
+    },
+    {
       path: '/',
       component: () => import('@/components/AppLayout.vue'),
       redirect: '/schedule',

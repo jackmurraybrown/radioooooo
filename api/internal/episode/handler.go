@@ -77,6 +77,7 @@ type episodeBody struct {
 	Type          string    `json:"type"                   enum:"live,recorded,external,playlist"`
 	SourceAdapter string    `json:"sourceAdapter"          minLength:"1"`
 	SourceRef     string    `json:"sourceRef"              minLength:"1"`
+	ContactEmail  *string   `json:"contactEmail,omitempty" doc:"email address for show reminders and tracklist submission link"`
 }
 
 type createInput struct {
@@ -128,6 +129,7 @@ func (h *Handler) create(ctx context.Context, input *createInput) (*episodeOutpu
 		Type:          input.Body.Type,
 		SourceAdapter: input.Body.SourceAdapter,
 		SourceRef:     input.Body.SourceRef,
+		ContactEmail:  input.Body.ContactEmail,
 	})
 	if err != nil {
 if errors.Is(err, pgx.ErrNoRows) {
@@ -175,6 +177,7 @@ func (h *Handler) update(ctx context.Context, input *updateInput) (*episodeOutpu
 		Type:          input.Body.Type,
 		SourceAdapter: input.Body.SourceAdapter,
 		SourceRef:     input.Body.SourceRef,
+		ContactEmail:  input.Body.ContactEmail,
 	})
 	if err != nil {
 if errors.Is(err, pgx.ErrNoRows) {

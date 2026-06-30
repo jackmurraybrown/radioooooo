@@ -76,14 +76,15 @@ func (h *Handler) Register(api huma.API) {
 // --- types ---
 
 type showBody struct {
-	Title           string `json:"title"           minLength:"1" maxLength:"200"`
-	Description     string `json:"description"`
-	RecurrenceRule  string `json:"recurrenceRule"  minLength:"1"`
-	DurationMinutes int    `json:"durationMinutes" minimum:"1"`
-	Type            string `json:"type"            enum:"live,recorded,external,playlist"`
-	SourceAdapter   string `json:"sourceAdapter"   minLength:"1"`
-	SourceRef       string `json:"sourceRef"       minLength:"1"`
-	AllowRepeat     bool   `json:"allowRepeat"`
+	Title           string  `json:"title"                  minLength:"1" maxLength:"200"`
+	Description     string  `json:"description"`
+	RecurrenceRule  string  `json:"recurrenceRule"         minLength:"1"`
+	DurationMinutes int     `json:"durationMinutes"        minimum:"1"`
+	Type            string  `json:"type"                   enum:"live,recorded,external,playlist"`
+	SourceAdapter   string  `json:"sourceAdapter"          minLength:"1"`
+	SourceRef       string  `json:"sourceRef"              minLength:"1"`
+	AllowRepeat     bool    `json:"allowRepeat"`
+	ContactEmail    *string `json:"contactEmail,omitempty" doc:"email for show reminders and tracklist submission links"`
 }
 
 type channelPathInput struct {
@@ -133,6 +134,7 @@ func (h *Handler) create(ctx context.Context, input *createInput) (*showOutput, 
 		SourceAdapter:   input.Body.SourceAdapter,
 		SourceRef:       input.Body.SourceRef,
 		AllowRepeat:     input.Body.AllowRepeat,
+		ContactEmail:    input.Body.ContactEmail,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -203,6 +205,7 @@ func (h *Handler) update(ctx context.Context, input *updateInput) (*showOutput, 
 		SourceAdapter:   input.Body.SourceAdapter,
 		SourceRef:       input.Body.SourceRef,
 		AllowRepeat:     input.Body.AllowRepeat,
+		ContactEmail:    input.Body.ContactEmail,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

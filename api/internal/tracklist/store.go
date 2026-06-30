@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -61,6 +62,10 @@ func (s *Store) ListTracks(ctx context.Context, episodeID string) ([]Track, erro
 
 // . ݁₊ ✶ replaces all tracks for an episode in one tx
 func (s *Store) SetTracks(ctx context.Context, episodeID string, inputs []TrackInput) ([]Track, error) {
+	if err := validateTrackTimes(inputs); err != nil {
+		return nil, err
+	}
+
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -85,6 +90,33 @@ func (s *Store) SetTracks(ctx context.Context, episodeID string, inputs []TrackI
 		return nil, err
 	}
 	return s.ListTracks(ctx, episodeID)
+}
+
+type ValidationError struct{ Msg string }
+
+func (e *ValidationError) Error() string { return e.Msg }
+
+// ⊹ ˖ validates track times are non-negative and in chronological order
+func validateTrackTimes(inputs []TrackInput) error {
+	var lastTime *int
+	for i, t := range inputs {
+		if t.StartedAt != nil {
+			if *t.StartedAt < 0 {
+				return &ValidationError{fmt.Sprintf("track %d: time can't be negative", i+1)}
+			}
+			if lastTime != nil && *t.StartedAt < *lastTime {
+				return &ValidationError{fmt.Sprintf("track %d: time is earlier than previous track", i+1)}
+			}
+			lastTime = t.StartedAt
+		}
+		if t.EndedAt != nil && *t.EndedAt < 0 {
+			return &ValidationError{fmt.Sprintf("track %d: end time can't be negative", i+1)}
+		}
+		if t.StartedAt != nil && t.EndedAt != nil && *t.EndedAt < *t.StartedAt {
+			return &ValidationError{fmt.Sprintf("track %d: end time before start time", i+1)}
+		}
+	}
+	return nil
 }
 
 // ˖ˎˊ˗ episode info + station webhook url for forwarding decisions

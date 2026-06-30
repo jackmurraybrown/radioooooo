@@ -82,6 +82,15 @@ func (h *Handler) Register(api huma.API) {
 	}, h.receiveWebhook)
 }
 
+func setTracksOrError(err error) error {
+	var ve *ValidationError
+	if errors.As(err, &ve) {
+		return huma.Error400BadRequest(ve.Msg)
+	}
+	slog.Error("failed to save tracks", "error", err)
+	return huma.Error500InternalServerError("internal error")
+}
+
 // --- types ✮⋆‧°—°‧⋆✮ ---
 
 type tokenInput struct {
@@ -164,8 +173,7 @@ func (h *Handler) saveByToken(ctx context.Context, input *saveByTokenInput) (*tr
 	}
 	tracks, err := h.store.SetTracks(ctx, episodeID, input.Body.Tracks)
 	if err != nil {
-		slog.Error("failed to save tracks", "error", err)
-		return nil, huma.Error500InternalServerError("internal error")
+		return nil, setTracksOrError(err)
 	}
 	info, webhookURL, err := h.store.EpisodeWithStation(ctx, episodeID)
 	if err != nil {
