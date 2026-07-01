@@ -1,4 +1,4 @@
-.PHONY: build test tidy lint run
+.PHONY: build test tidy lint run schema-docs
 
 build:
 	go build ./...
@@ -14,3 +14,8 @@ lint:
 
 run:
 	go run ./cmd/api
+
+schema-docs:
+	tbls doc --rm-dist
+	mv .tbls-tmp/README.md internal/database/SCHEMA.md
+	rm -rf .tbls-tmp

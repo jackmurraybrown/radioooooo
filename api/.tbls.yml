@@ -1,0 +1,10 @@
+dsn: ${DATABASE_URL}
+
+docPath: .tbls-tmp
+
+format:
+  adjust: true
+
+er:
+  format: mermaid
+  comment: true

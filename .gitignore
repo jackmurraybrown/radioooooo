@@ -1,5 +1,6 @@
 # api
 /api/bin/
+/api/.tbls-tmp/
 
 # frontend
 /frontend/node_modules/
