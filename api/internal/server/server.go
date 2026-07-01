@@ -29,6 +29,7 @@ import (
 	"radioooooo/internal/show"
 	"radioooooo/internal/station"
 	"radioooooo/internal/storage"
+	"radioooooo/internal/tracklist"
 	"radioooooo/internal/user"
 )
 
@@ -103,6 +104,7 @@ func New(cfg *config.Config, db *pgxpool.Pool, listenerSource analytics.Listener
 	ical.NewHandler(ical.NewStore(db)).Register(api)
 	analytics.NewHandler(analytics.NewStore(db), channelStore, listenerSource).Register(api)
 	notify.NewTemplateHandler(notify.NewTemplateStore(db)).Register(api)
+	tracklist.NewHandler(tracklist.NewStore(db), channelStore, cfg.FrontURL).Register(api)
 
 	// ⊹ ࣪ ˖ public routes — rate limited, no auth
 	r.Group(func(pub chi.Router) {

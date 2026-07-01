@@ -113,9 +113,10 @@ type getOutput struct {
 }
 
 type stationUpdateBody struct {
-	Name    string  `json:"name"              minLength:"1" maxLength:"100"`
-	Slug    string  `json:"slug"              minLength:"1" maxLength:"50" pattern:"^[a-z0-9-]+$"`
-	LogoURL *string `json:"logoUrl,omitempty" doc:"url to station logo image"`
+	Name                string  `json:"name"                           minLength:"1" maxLength:"100"`
+	Slug                string  `json:"slug"                           minLength:"1" maxLength:"50" pattern:"^[a-z0-9-]+$"`
+	LogoURL             *string `json:"logoUrl,omitempty"              doc:"url to station logo image"`
+	TracklistWebhookURL *string `json:"tracklistWebhookUrl,omitempty"  doc:"webhook URL for tracklist forwarding"`
 }
 
 type updateInput struct {
@@ -211,9 +212,10 @@ func (h *Handler) update(ctx context.Context, input *updateInput) (*getOutput, e
 		return nil, huma.Error403Forbidden("forbidden")
 	}
 	st, err := h.store.Update(ctx, input.ID, UpdateParams{
-		Name:    input.Body.Name,
-		Slug:    input.Body.Slug,
-		LogoURL: input.Body.LogoURL,
+		Name:                input.Body.Name,
+		Slug:                input.Body.Slug,
+		LogoURL:             input.Body.LogoURL,
+		TracklistWebhookURL: input.Body.TracklistWebhookURL,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

@@ -10,6 +10,7 @@ type Station struct {
 	SeasonEndDate          *time.Time `json:"seasonEndDate,omitempty"         db:"season_end_date"`
 	DefaultShowHorizonDays int        `json:"defaultShowHorizonDays"          db:"default_show_horizon_days"`
 	LogoURL                *string    `json:"logoUrl,omitempty"               db:"logo_url"`
+	TracklistWebhookURL    *string    `json:"tracklistWebhookUrl,omitempty"   db:"tracklist_webhook_url"`
 	CreatedAt              time.Time  `json:"createdAt"                       db:"created_at"`
 	UpdatedAt              time.Time  `json:"updatedAt"                       db:"updated_at"`
 }

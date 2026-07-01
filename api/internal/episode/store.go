@@ -13,7 +13,7 @@ const cols = `
 	e.id::text, e.channel_id::text, e.show_id::text, e.title, e.description, e.image_ref,
 	e.color, e.start_time, e.end_time, e.type, e.source_adapter, e.source_ref,
 	e.original_start, e.ical_uid, e.ical_feed_id::text,
-	e.auto_filled, e.repeat_of::text, e.created_at, e.updated_at`
+	e.auto_filled, e.repeat_of::text, e.contact_email, e.created_at, e.updated_at`
 
 type Store struct {
 	db *pgxpool.Pool
@@ -33,6 +33,7 @@ type CreateParams struct {
 	Type          string
 	SourceAdapter string
 	SourceRef     string
+	ContactEmail  *string
 }
 
 type UpdateParams struct {
@@ -43,16 +44,17 @@ type UpdateParams struct {
 	Type          string
 	SourceAdapter string
 	SourceRef     string
+	ContactEmail  *string
 }
 
 // ⋆˙⟡ returns pgx.ErrNoRows if the channel doesn't belong to stationID.
 func (s *Store) Create(ctx context.Context, p CreateParams) (Episode, error) {
 	rows, err := s.db.Query(ctx, `
-		insert into episodes (channel_id, title, description, start_time, end_time, type, source_adapter, source_ref)
-		select $1::uuid, $2, $3, $4, $5, $6, $7, $8
-		from channels where id = $1::uuid and station_id = $9::uuid
+		insert into episodes (channel_id, title, description, start_time, end_time, type, source_adapter, source_ref, contact_email)
+		select $1::uuid, $2, $3, $4, $5, $6, $7, $8, $9
+		from channels where id = $1::uuid and station_id = $10::uuid
 		returning`+cols,
-		p.ChannelID, p.Title, p.Description, p.StartTime, p.EndTime, p.Type, p.SourceAdapter, p.SourceRef, p.StationID,
+		p.ChannelID, p.Title, p.Description, p.StartTime, p.EndTime, p.Type, p.SourceAdapter, p.SourceRef, p.ContactEmail, p.StationID,
 	)
 	if err != nil {
 		return Episode{}, err
@@ -90,12 +92,12 @@ func (s *Store) Update(ctx context.Context, id, channelID, stationID string, p U
 	rows, err := s.db.Query(ctx, `
 		update episodes e
 		set title=$3, description=$4, start_time=$5, end_time=$6,
-		    type=$7, source_adapter=$8, source_ref=$9, updated_at=now()
+		    type=$7, source_adapter=$8, source_ref=$9, contact_email=$10, updated_at=now()
 		from channels c
 		where e.id=$1::uuid and e.channel_id=$2::uuid
-		  and e.channel_id=c.id and c.station_id=$10::uuid
+		  and e.channel_id=c.id and c.station_id=$11::uuid
 		returning`+cols,
-		id, channelID, p.Title, p.Description, p.StartTime, p.EndTime, p.Type, p.SourceAdapter, p.SourceRef, stationID,
+		id, channelID, p.Title, p.Description, p.StartTime, p.EndTime, p.Type, p.SourceAdapter, p.SourceRef, p.ContactEmail, stationID,
 	)
 	if err != nil {
 		return Episode{}, err

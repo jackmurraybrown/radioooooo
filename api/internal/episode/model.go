@@ -27,6 +27,7 @@ type Episode struct {
 	IcalFeedID    *string    `json:"icalFeedId,omitempty"     db:"ical_feed_id"`
 	AutoFilled    bool       `json:"autoFilled"               db:"auto_filled"`
 	RepeatOf      *string    `json:"repeatOf,omitempty"       db:"repeat_of"`
+	ContactEmail  *string    `json:"contactEmail,omitempty"   db:"contact_email"`
 	CreatedAt     time.Time  `json:"createdAt"                db:"created_at"`
 	UpdatedAt     time.Time  `json:"updatedAt"                db:"updated_at"`
 }

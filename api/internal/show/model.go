@@ -14,6 +14,7 @@ type Show struct {
 	SourceAdapter   string    `json:"sourceAdapter"   db:"source_adapter"`
 	SourceRef       string    `json:"sourceRef"       db:"source_ref"`
 	AllowRepeat     bool      `json:"allowRepeat"     db:"allow_repeat"`
+	ContactEmail    *string   `json:"contactEmail,omitempty" db:"contact_email"`
 	CreatedAt       time.Time `json:"createdAt"       db:"created_at"`
 	UpdatedAt       time.Time `json:"updatedAt"       db:"updated_at"`
 }

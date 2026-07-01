@@ -1,95 +1,141 @@
-# database schema
+# radiooo
+
+## Tables
+
+| Name                                                    | Columns | Comment | Type       |
+| ------------------------------------------------------- | ------- | ------- | ---------- |
+| [public.schema_migrations](public.schema_migrations.md) | 2       |         | BASE TABLE |
+| [public.stations](public.stations.md)                   | 6       |         | BASE TABLE |
+| [public.api_keys](public.api_keys.md)                   | 4       |         | BASE TABLE |
+| [public.channels](public.channels.md)                   | 6       |         | BASE TABLE |
+| [public.episodes](public.episodes.md)                   | 12      |         | BASE TABLE |
+| [public.media](public.media.md)                         | 16      |         | BASE TABLE |
+| [public.playlists](public.playlists.md)                 | 9       |         | BASE TABLE |
+| [public.playlist_items](public.playlist_items.md)       | 5       |         | BASE TABLE |
+| [public.episode_tracks](public.episode_tracks.md)       | 9       |         | BASE TABLE |
+| [public.users](public.users.md)                         | 6       |         | BASE TABLE |
+| [public.refresh_tokens](public.refresh_tokens.md)       | 5       |         | BASE TABLE |
+
+## Relations
 
 ```mermaid
 erDiagram
-    stations {
-        uuid id PK
-        text name
-        text slug UK
-        timestamptz created_at
-        timestamptz updated_at
-    }
 
-    api_keys {
-        uuid id PK
-        uuid station_id FK
-        text key_hash UK
-        timestamptz created_at
-    }
+"public.api_keys" }o--|| "public.stations" : "FOREIGN KEY (station_id) REFERENCES stations(id) ON DELETE CASCADE"
+"public.channels" }o--|| "public.stations" : "FOREIGN KEY (station_id) REFERENCES stations(id) ON DELETE CASCADE"
+"public.episodes" }o--|| "public.channels" : "FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE"
+"public.media" }o--|| "public.stations" : "FOREIGN KEY (station_id) REFERENCES stations(id) ON DELETE CASCADE"
+"public.playlists" }o--|| "public.stations" : "FOREIGN KEY (station_id) REFERENCES stations(id) ON DELETE CASCADE"
+"public.playlist_items" }o--|| "public.media" : "FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE RESTRICT"
+"public.playlist_items" }o--|| "public.playlists" : "FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE"
+"public.episode_tracks" }o--|| "public.episodes" : "FOREIGN KEY (episode_id) REFERENCES episodes(id) ON DELETE CASCADE"
+"public.users" }o--|| "public.stations" : "FOREIGN KEY (station_id) REFERENCES stations(id) ON DELETE CASCADE"
+"public.refresh_tokens" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 
-    channels {
-        uuid id PK
-        uuid station_id FK
-        text name
-        text slug UK
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    episodes {
-        uuid id PK
-        uuid channel_id FK
-        text title
-        text description
-        text image_ref
-        timestamptz start_time
-        timestamptz end_time
-        text type
-        text source_adapter
-        text source_ref
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    media {
-        uuid id PK
-        uuid station_id FK
-        text title
-        text artist
-        text album
-        text genre
-        int year
-        interval duration
-        numeric bpm
-        text isrc
-        text artwork_ref
-        text file_format
-        bigint file_size_bytes
-        text source_adapter
-        text source_ref
-        text local_ref
-        text download_status
-        text download_error
-        timestamptz downloaded_at
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    playlists {
-        uuid id PK
-        uuid station_id FK
-        text name
-        bool shuffle
-        bool loop
-        text source_adapter
-        text source_ref
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    playlist_items {
-        uuid id PK
-        uuid playlist_id FK
-        uuid media_id FK
-        int position
-        timestamptz created_at
-    }
-
-    stations ||--o{ api_keys : "authenticates via"
-    stations ||--o{ channels : "has"
-    stations ||--o{ media : "owns"
-    stations ||--o{ playlists : "owns"
-    channels ||--o{ episodes : "schedules"
-    playlists ||--o{ playlist_items : "contains"
-    media ||--o{ playlist_items : "appears in"
+"public.schema_migrations" {
+  bigint version ""
+  boolean dirty ""
+}
+"public.stations" {
+  uuid id ""
+  text name ""
+  text slug ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+  text logo_url ""
+}
+"public.api_keys" {
+  uuid id ""
+  uuid station_id FK ""
+  text key_hash ""
+  timestamp_with_time_zone created_at ""
+}
+"public.channels" {
+  uuid id ""
+  uuid station_id FK ""
+  text name ""
+  text slug ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.episodes" {
+  uuid id ""
+  uuid channel_id FK ""
+  text title ""
+  text description ""
+  text image_ref ""
+  timestamp_with_time_zone start_time ""
+  timestamp_with_time_zone end_time ""
+  text type ""
+  text source_adapter ""
+  text source_ref ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.media" {
+  uuid id ""
+  uuid station_id FK ""
+  text title ""
+  text artist ""
+  integer duration ""
+  text artwork_ref ""
+  text file_format ""
+  bigint file_size_bytes ""
+  text source_adapter ""
+  text source_ref ""
+  text local_ref ""
+  text download_status ""
+  text download_error ""
+  timestamp_with_time_zone downloaded_at ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.playlists" {
+  uuid id ""
+  uuid station_id FK ""
+  text name ""
+  boolean shuffle ""
+  boolean loop ""
+  text source_adapter ""
+  text source_ref ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.playlist_items" {
+  uuid id ""
+  uuid playlist_id FK ""
+  uuid media_id FK ""
+  integer position ""
+  timestamp_with_time_zone created_at ""
+}
+"public.episode_tracks" {
+  uuid id ""
+  uuid episode_id FK ""
+  integer position ""
+  text title ""
+  text artist ""
+  text album ""
+  integer started_at ""
+  integer ended_at ""
+  timestamp_with_time_zone created_at ""
+}
+"public.users" {
+  uuid id ""
+  uuid station_id FK ""
+  text email ""
+  text password_hash ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.refresh_tokens" {
+  uuid id ""
+  uuid user_id FK ""
+  text token_hash ""
+  timestamp_with_time_zone expires_at ""
+  timestamp_with_time_zone created_at ""
+}
 ```
+
+---
+
+> Generated by [tbls](https://github.com/k1LoW/tbls)

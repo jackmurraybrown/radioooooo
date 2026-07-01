@@ -27,6 +27,11 @@ var defaults = map[string]EmailTemplate{
 		Subject: `your show "{{.Title}}" is in {{.DaysUntil}} days`,
 		Body:    `your show **{{.Title}}** is scheduled in {{.DaysUntil}} days ({{.StartTime}}).`,
 	},
+	"tracklist_email": {
+		Type:    "tracklist_email",
+		Subject: `tracklist for "{{.Title}}"`,
+		Body:    "your show **{{.Title}}** has ended ({{.EndTime}}).\n\n[add your tracklist]({{.EditURL}})\n\nthis link expires in 30 days.",
+	},
 }
 
 type TemplateStore struct {
