@@ -392,6 +392,7 @@ export interface components {
              */
             readonly $schema?: string;
             channelId: string;
+            contactEmail?: string;
             /** Format: date-time */
             createdAt: string;
             description?: string;
@@ -416,6 +417,7 @@ export interface components {
              * @example https://example.com/schemas/EpisodeBody.json
              */
             readonly $schema?: string;
+            contactEmail?: string;
             description?: string;
             /** Format: date-time */
             endTime: string;
@@ -735,6 +737,7 @@ export interface components {
             logoUrl?: string;
             name: string;
             slug: string;
+            tracklistWebhookUrl?: string;
             /** Format: date-time */
             updatedAt: string;
         };

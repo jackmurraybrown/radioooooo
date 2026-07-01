@@ -17,15 +17,16 @@ const saving = ref(false)
 const fetchError = ref<string | null>(null)
 
 const profileSchema = v.object({
-  name:    v.pipe(v.string(), v.minLength(1, 'required'), v.maxLength(100)),
-  slug:    v.pipe(v.string(), v.minLength(1, 'required'), v.maxLength(50), v.regex(/^[a-z0-9-]+$/, 'lowercase letters, numbers and hyphens only')),
-  logoUrl: v.optional(v.string()),
+  name:               v.pipe(v.string(), v.minLength(1, 'required'), v.maxLength(100)),
+  slug:               v.pipe(v.string(), v.minLength(1, 'required'), v.maxLength(50), v.regex(/^[a-z0-9-]+$/, 'lowercase letters, numbers and hyphens only')),
+  logoUrl:            v.optional(v.string()),
+  tracklistWebhookUrl: v.optional(v.string()),
 })
 
-interface ProfileForm { name: string; slug: string; logoUrl: string }
+interface ProfileForm { name: string; slug: string; logoUrl: string; tracklistWebhookUrl: string }
 type ProfileErrors = Partial<Record<keyof ProfileForm, string>>
 
-const form = reactive<ProfileForm>({ name: '', slug: '', logoUrl: '' })
+const form = reactive<ProfileForm>({ name: '', slug: '', logoUrl: '', tracklistWebhookUrl: '' })
 const errors = reactive<ProfileErrors>({})
 
 function clearErrors() {
@@ -33,9 +34,10 @@ function clearErrors() {
 }
 
 function populate(st: Station) {
-  form.name    = st.name
-  form.slug    = st.slug
-  form.logoUrl = st.logoUrl ?? ''
+  form.name               = st.name
+  form.slug               = st.slug
+  form.logoUrl            = st.logoUrl ?? ''
+  form.tracklistWebhookUrl = st.tracklistWebhookUrl ?? ''
 }
 
 async function fetchStation() {
@@ -67,9 +69,10 @@ async function save() {
   saving.value = true
   try {
     const res = await api(`/stations/${auth.stationId}`).put({
-      name:    form.name,
-      slug:    form.slug,
-      logoUrl: form.logoUrl || undefined,
+      name:               form.name,
+      slug:               form.slug,
+      logoUrl:            form.logoUrl || undefined,
+      tracklistWebhookUrl: form.tracklistWebhookUrl || undefined,
     })
     if (!res.ok) throw new Error(`${res.status}`)
     station.value = await res.json()
@@ -210,6 +213,14 @@ onMounted(() => {
             </label>
             <input id="s-slug" v-model="form.slug" :class="{ error: errors.slug }" maxlength="50" />
             <span v-if="errors.slug" class="err">{{ errors.slug }}</span>
+          </div>
+
+          <div class="field">
+            <label for="s-webhook">
+              tracklist webhook url
+              <span class="label-hint">receives tracklist data after each show</span>
+            </label>
+            <input id="s-webhook" v-model="form.tracklistWebhookUrl" placeholder="https://…" />
           </div>
         </section>
 

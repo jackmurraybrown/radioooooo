@@ -5,6 +5,8 @@ import * as v from 'valibot'
 import type { Episode, EpisodeBody } from '@/api/types'
 import { useMedia } from '@/composables/useMedia'
 import { usePlaylists } from '@/composables/usePlaylists'
+import { api } from '@/api/client'
+import { useToast } from '@/composables/useToast'
 
 type EpisodeType = EpisodeBody['type']
 
@@ -14,9 +16,13 @@ const emit = defineEmits<{
   delete: [id: string]
 }>()
 
+const toast = useToast()
 const dialogEl = ref<HTMLDialogElement>()
 const mode = ref<'create' | 'edit'>('create')
 const currentId = ref<string>('')
+const currentChannelId = ref<string>('')
+const linkCopied = ref(false)
+const linkLoading = ref(false)
 
 // ✮ ⋆ ˚｡𖦹 prefetch media + playlists for dropdowns
 const { media, fetchMedia } = useMedia()
@@ -52,23 +58,25 @@ const schema = v.pipe(
 )
 
 type FormState = {
-  title:       string
-  type:        EpisodeType
-  description: string
-  startTime:   string
-  endTime:     string
-  sourceRef:   string
+  title:        string
+  type:         EpisodeType
+  description:  string
+  startTime:    string
+  endTime:      string
+  sourceRef:    string
+  contactEmail: string
 }
 
 type FormErrors = Partial<Record<keyof FormState | '_form', string>>
 
 const form = reactive<FormState>({
-  title:       '',
-  type:        'recorded',
-  description: '',
-  startTime:   '',
-  endTime:     '',
-  sourceRef:   '',
+  title:        '',
+  type:         'recorded',
+  description:  '',
+  startTime:    '',
+  endTime:      '',
+  sourceRef:    '',
+  contactEmail: '',
 })
 
 const errors = reactive<FormErrors>({})
@@ -82,34 +90,56 @@ function toLocal(iso: string): string {
 }
 
 function reset(partial: Partial<FormState>) {
-  form.title       = partial.title       ?? ''
-  form.type        = partial.type        ?? 'recorded'
-  form.description = partial.description ?? ''
-  form.startTime   = partial.startTime   ?? ''
-  form.endTime     = partial.endTime     ?? ''
-  form.sourceRef   = partial.sourceRef   ?? ''
+  form.title        = partial.title        ?? ''
+  form.type         = partial.type         ?? 'recorded'
+  form.description  = partial.description  ?? ''
+  form.startTime    = partial.startTime    ?? ''
+  form.endTime      = partial.endTime      ?? ''
+  form.sourceRef    = partial.sourceRef    ?? ''
+  form.contactEmail = partial.contactEmail ?? ''
+  linkCopied.value  = false
   clearErrors()
 }
 
-function openCreate(start: string, end: string) {
-  mode.value      = 'create'
-  currentId.value = ''
+function openCreate(start: string, end: string, channelId?: string) {
+  mode.value             = 'create'
+  currentId.value        = ''
+  currentChannelId.value = channelId ?? ''
   reset({ startTime: toLocal(start), endTime: toLocal(end) })
   dialogEl.value?.showModal()
 }
 
-function openEdit(episode: Episode) {
-  mode.value      = 'edit'
-  currentId.value = episode.id
+function openEdit(episode: Episode, channelId?: string) {
+  mode.value             = 'edit'
+  currentId.value        = episode.id
+  currentChannelId.value = channelId ?? episode.channelId
   reset({
-    title:       episode.title,
-    type:        episode.type as EpisodeType,
-    description: episode.description,
-    startTime:   toLocal(episode.startTime),
-    endTime:     toLocal(episode.endTime),
-    sourceRef:   episode.sourceRef,
+    title:        episode.title,
+    type:         episode.type as EpisodeType,
+    description:  episode.description,
+    startTime:    toLocal(episode.startTime),
+    endTime:      toLocal(episode.endTime),
+    sourceRef:    episode.sourceRef,
+    contactEmail: episode.contactEmail ?? '',
   })
   dialogEl.value?.showModal()
+}
+
+async function copySubmissionLink() {
+  if (!currentId.value || !currentChannelId.value) return
+  linkLoading.value = true
+  try {
+    const res = await api(`/channels/${currentChannelId.value}/episodes/${currentId.value}/submission-link`).post({})
+    if (!res.ok) throw new Error(`${res.status}`)
+    const data = await res.json()
+    await navigator.clipboard.writeText(data.url)
+    linkCopied.value = true
+    setTimeout(() => { linkCopied.value = false }, 2000)
+  } catch {
+    toast.error('failed to generate link')
+  } finally {
+    linkLoading.value = false
+  }
 }
 
 function close() {
@@ -134,7 +164,8 @@ function submit() {
     endTime:       new Date(form.endTime).toISOString(),
     sourceAdapter: adapterForType[form.type],
     sourceRef:     form.sourceRef,
-    ...(form.description ? { description: form.description } : {}),
+    ...(form.description  ? { description:  form.description }  : {}),
+    ...(form.contactEmail ? { contactEmail: form.contactEmail } : {}),
   }
 
   if (mode.value === 'create') {
@@ -236,11 +267,27 @@ defineExpose({ openCreate, openEdit, close })
           <label for="ep-desc">description</label>
           <textarea id="ep-desc" v-model="form.description" rows="3" maxlength="2000" />
         </div>
+
+        <div class="field">
+          <label for="ep-email">
+            contact email
+            <span class="label-hint">for tracklist submission link after show</span>
+          </label>
+          <input id="ep-email" type="email" v-model="form.contactEmail" placeholder="dj@example.com" />
+        </div>
       </div>
 
       <footer>
         <button v-if="mode === 'edit'" type="button" class="delete-btn" @click="remove">delete</button>
         <div class="actions">
+          <!-- ⊹ ₊ ⟡ copy tracklist link for sharing with dj -->
+          <button
+            v-if="mode === 'edit'"
+            type="button"
+            class="link-btn"
+            :disabled="linkLoading"
+            @click="copySubmissionLink"
+          >{{ linkCopied ? 'copied!' : linkLoading ? '…' : 'copy tracklist link' }}</button>
           <button type="button" @click="close">cancel</button>
           <button type="submit" class="primary">{{ mode === 'create' ? 'create' : 'save' }}</button>
         </div>
@@ -310,7 +357,13 @@ label {
   font-size: 0.8rem;
   color: #6b7280;
   font-weight: 500;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
 }
+
+.label-hint { font-size: 0.72rem; color: #9ca3af; font-weight: 400; }
 
 input,
 select,
@@ -390,4 +443,13 @@ button.delete-btn {
 }
 
 button.delete-btn:hover { background: #fef2f2; }
+
+button.link-btn {
+  color: #6366f1;
+  border-color: #c7d2fe;
+  font-size: 0.8rem;
+}
+
+button.link-btn:hover:not(:disabled) { background: #eef2ff; }
+button.link-btn:disabled { opacity: 0.5; cursor: default; }
 </style>
