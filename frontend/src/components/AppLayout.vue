@@ -19,6 +19,7 @@ import ToastContainer from './ToastContainer.vue'
   display: flex;
   height: 100vh;
   overflow: hidden;
+  background: var(--background);
 }
 
 .content {

@@ -2,7 +2,8 @@
 // ⊹ ࣪ ˖ public tracklist submission form — accessed via token link
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import TracklistEditor, { secondsToTime, timeToSeconds, type Track } from '@/components/TracklistEditor.vue'
+import TracklistEditor from '@/components/TracklistEditor.vue'
+import { secondsToTime, timeToSeconds, type Track } from '@/utils/tracklist'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 const route = useRoute()
@@ -119,17 +120,16 @@ function formatTime(iso: string) {
   max-width: 720px;
   margin: 2rem auto;
   padding: 0 1rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: #1a1a1a;
+  color: var(--foreground);
 }
 
 .status {
   text-align: center;
   padding: 3rem 0;
-  color: #666;
+  color: var(--muted-foreground);
 }
 
-.status-err { color: #c00; }
+.status-err { color: var(--destructive); }
 
 .episode-header { margin-bottom: 1.5rem; }
 
@@ -139,7 +139,7 @@ function formatTime(iso: string) {
 }
 
 .episode-time {
-  color: #666;
+  color: var(--muted-foreground);
   font-size: 0.85rem;
   margin: 0;
 }
@@ -152,23 +152,23 @@ function formatTime(iso: string) {
 
 .btn {
   padding: 0.5rem 1.25rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
   cursor: pointer;
   font-size: 0.85rem;
   font-family: inherit;
 }
 
 .btn-primary {
-  background: #1a1a1a;
-  color: #fff;
-  border-color: #1a1a1a;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
 }
 
-.btn-primary:hover:not(:disabled) { background: #333; }
+.btn-primary:hover:not(:disabled) { opacity: 0.85; }
 .btn:disabled { opacity: 0.4; cursor: default; }
 
-.msg-ok  { color: #2a7; margin-top: 0.75rem; font-size: 0.85rem; }
-.msg-err { color: #c00; margin-top: 0.75rem; font-size: 0.85rem; }
+.msg-ok  { color: oklch(0.7 0.18 145); margin-top: 0.75rem; font-size: 0.85rem; }
+.msg-err { color: var(--destructive); margin-top: 0.75rem; font-size: 0.85rem; }
 </style>

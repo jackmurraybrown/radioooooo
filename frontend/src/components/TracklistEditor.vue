@@ -1,37 +1,13 @@
 <script setup lang="ts">
 // ✮⋆‧°—°‧⋆✮ shared tracklist editor — used in the public form and the admin episode dialog
 import { computed } from 'vue'
-
-export interface Track {
-  title:  string
-  artist: string
-  time:   string
-}
+import { type Track, timeToSeconds } from '@/utils/tracklist'
 
 const tracks = defineModel<Track[]>({ required: true })
 
 const props = defineProps<{
   episodeDuration?: number // seconds — 0 or undefined means no duration check
 }>()
-
-// ⊹ ₊ ⟡ time helpers
-export function secondsToTime(s: number | null): string {
-  if (s == null) return ''
-  const h   = Math.floor(s / 3600)
-  const m   = Math.floor((s % 3600) / 60)
-  const sec = s % 60
-  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
-  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
-}
-
-export function timeToSeconds(t: string): number | null {
-  if (!t.trim()) return null
-  const parts = t.split(':').map(Number)
-  if (parts.some(isNaN)) return null
-  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
-  if (parts.length === 2) return parts[0] * 60 + parts[1]
-  return null
-}
 
 // ✶. ݁ ˖ client-side validation
 const validationErrors = computed(() => {
@@ -142,9 +118,9 @@ defineExpose({ isValid, validationErrors, timeToSeconds })
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   padding: 0.3rem 0.25rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border);
 }
 
 .track-table td {
@@ -152,9 +128,9 @@ defineExpose({ isValid, validationErrors, timeToSeconds })
   vertical-align: middle;
 }
 
-.track-table tbody tr:hover { background: #f9fafb; }
+.track-table tbody tr:hover { background: var(--muted); }
 
-.col-num    { width: 1.75rem; text-align: center; color: #9ca3af; font-size: 0.8rem; }
+.col-num    { width: 1.75rem; text-align: center; color: var(--muted-foreground); font-size: 0.8rem; }
 .col-time   { width: 5rem; }
 .col-time input { text-align: center; }
 .col-actions { width: 5rem; white-space: nowrap; text-align: right; }
@@ -162,53 +138,51 @@ defineExpose({ isValid, validationErrors, timeToSeconds })
 .track-table input {
   width: 100%;
   padding: 0.3rem 0.4rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
+  border: 1px solid var(--border);
   font-size: 0.85rem;
   font-family: inherit;
-  background: #fff;
+  background: var(--input);
+  color: var(--foreground);
   box-sizing: border-box;
   outline: none;
 }
 
-.track-table input:focus    { border-color: #6366f1; }
-.track-table input::placeholder { color: #d1d5db; }
+.track-table input:focus { border-color: var(--ring); }
+.track-table input::placeholder { color: var(--muted-foreground); opacity: 0.6; }
 
 .btn-icon {
   background: none;
-  border: 1px solid #e5e7eb;
-  border-radius: 3px;
+  border: 1px solid var(--border);
   padding: 0.15rem 0.35rem;
   cursor: pointer;
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--muted-foreground);
   line-height: 1;
 }
 
-.btn-icon:hover:not(:disabled) { background: #f3f4f6; }
+.btn-icon:hover:not(:disabled) { background: var(--muted); color: var(--foreground); }
 .btn-icon:disabled { opacity: 0.25; cursor: default; }
-.btn-remove:hover:not(:disabled) { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
+.btn-remove:hover:not(:disabled) { color: var(--destructive); border-color: var(--destructive); }
 
 .editor-footer { display: flex; }
 
 .add-btn {
   padding: 0.35rem 0.75rem;
-  border-radius: 5px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--background);
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--muted-foreground);
   cursor: pointer;
   font-family: inherit;
 }
 
-.add-btn:hover { background: #f9fafb; }
+.add-btn:hover { background: var(--muted); color: var(--foreground); }
 
 .errors {
   margin: 0;
   padding-left: 1.1rem;
   font-size: 0.78rem;
-  color: #dc2626;
+  color: var(--destructive);
 }
 
 .errors li { margin-bottom: 0.15rem; }

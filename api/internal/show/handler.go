@@ -110,10 +110,12 @@ type showOutput struct {
 	Body Show
 }
 
+type showListBody struct {
+	Shows []Show `json:"shows"`
+}
+
 type listOutput struct {
-	Body struct {
-		Shows []Show `json:"shows"`
-	}
+	Body showListBody
 }
 
 // --- handlers ---

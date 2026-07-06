@@ -175,16 +175,15 @@ h1 { font-size: 1.1rem; font-weight: 600; margin: 0; }
 
 button.primary {
   padding: 0.45rem 1rem;
-  border-radius: 6px;
   border: none;
-  background: #111827;
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-size: 0.85rem;
   cursor: pointer;
   font-family: inherit;
 }
 
-button.primary:hover { background: #374151; }
+button.primary:hover { opacity: 0.85; }
 button.primary:disabled { opacity: 0.4; cursor: default; }
 
 .layout {
@@ -196,8 +195,7 @@ button.primary:disabled { opacity: 0.4; cursor: default; }
 }
 
 .list-panel {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid var(--border);
   overflow-y: auto;
 }
 
@@ -208,26 +206,25 @@ li {
   flex-direction: column;
   gap: 0.15rem;
   padding: 0.6rem 0.75rem;
-  border-radius: 6px;
   cursor: pointer;
   font-size: 0.88rem;
 }
 
-li:hover { background: #f9fafb; }
-li.active { background: #f3f4f6; }
+li:hover { background: var(--muted); }
+/* ⋆˙⟡ active state: left border instead of bg fill */
+li.active { background: var(--muted); border-left: 2px solid var(--foreground); }
 
-.pl-name { font-weight: 500; color: #111827; }
+.pl-name { font-weight: 500; color: var(--foreground); }
 
 .pl-meta {
   display: flex;
   gap: 0.4rem;
   font-size: 0.73rem;
-  color: #9ca3af;
+  color: var(--muted-foreground);
 }
 
 .detail-panel {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -243,7 +240,7 @@ li.active { background: #f3f4f6; }
   align-items: center;
   justify-content: space-between;
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
@@ -251,16 +248,15 @@ li.active { background: #f3f4f6; }
 
 .edit-btn {
   padding: 0.25rem 0.6rem;
-  border-radius: 5px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   background: transparent;
   font-size: 0.8rem;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--muted-foreground);
   font-family: inherit;
 }
 
-.edit-btn:hover { background: #f3f4f6; color: #111827; }
+.edit-btn:hover { background: var(--muted); color: var(--foreground); }
 
 .items-list {
   list-style: none;
@@ -275,46 +271,46 @@ li.active { background: #f3f4f6; }
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 0.5rem;
-  border-radius: 5px;
   font-size: 0.87rem;
 }
 
-.items-list li:hover { background: #f9fafb; }
+.items-list li:hover { background: var(--muted); }
 
-.item-pos { color: #9ca3af; font-size: 0.78rem; min-width: 1.5rem; text-align: right; }
+.item-pos { color: var(--muted-foreground); font-size: 0.78rem; min-width: 1.5rem; text-align: right; }
 
 .item-info { flex: 1; display: flex; flex-direction: column; gap: 0.1rem; overflow: hidden; }
 
 .item-title {
   font-weight: 500;
-  color: #111827;
+  color: var(--foreground);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.item-artist { font-size: 0.78rem; color: #6b7280; }
+.item-artist { font-size: 0.78rem; color: var(--muted-foreground); }
 
-.item-dur { font-size: 0.78rem; color: #9ca3af; white-space: nowrap; }
+.item-dur { font-size: 0.78rem; color: var(--muted-foreground); white-space: nowrap; }
 
 .remove-btn {
   background: none;
   border: none;
   cursor: pointer;
-  color: #d1d5db;
+  color: var(--muted-foreground);
   font-size: 0.8rem;
   padding: 0.2rem;
   line-height: 1;
   flex-shrink: 0;
+  opacity: 0.4;
 }
 
-.remove-btn:hover { color: #dc2626; }
+.remove-btn:hover { color: var(--destructive); opacity: 1; }
 
 .add-track {
   display: flex;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--border);
   flex-shrink: 0;
 }
 
@@ -322,24 +318,21 @@ li.active { background: #f3f4f6; }
   flex: 1;
   font-size: 0.88rem;
   padding: 0.4rem 0.6rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: 1px solid var(--border);
   outline: none;
   font-family: inherit;
-  background: #fff;
+  background: var(--input);
+  color: var(--foreground);
 }
 
-.add-track select:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99,102,241,0.15);
-}
+.add-track select:focus { border-color: var(--ring); }
 
 .empty {
-  color: #9ca3af;
+  color: var(--muted-foreground);
   font-size: 0.88rem;
   padding: 2rem;
   text-align: center;
 }
 
-.error-msg { color: #dc2626; font-size: 0.85rem; }
+.error-msg { color: var(--destructive); font-size: 0.85rem; }
 </style>

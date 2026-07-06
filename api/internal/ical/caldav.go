@@ -1,7 +1,6 @@
 package ical
 
 // ⋆˙⟡ CalDAV sync — bidirectional calendar sync via WebDAV
-// works with Nextcloud, Fastmail, Apple Calendar, Radicale
 // https://datatracker.ietf.org/doc/html/rfc4791
 
 import (

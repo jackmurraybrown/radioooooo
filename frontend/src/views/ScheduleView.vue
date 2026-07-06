@@ -108,22 +108,19 @@ onMounted(loadChannels)
 .channel-select {
   font-size: 0.9rem;
   padding: 0.35rem 0.6rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--input);
+  color: var(--foreground);
   font-family: inherit;
   cursor: pointer;
   outline: none;
 }
 
-.channel-select:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99,102,241,0.15);
-}
+.channel-select:focus { border-color: var(--ring); }
 
 .channel-name {
   font-size: 0.9rem;
   font-weight: 500;
-  color: #374151;
+  color: var(--foreground);
 }
 </style>

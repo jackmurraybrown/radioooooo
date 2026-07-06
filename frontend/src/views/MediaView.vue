@@ -1,10 +1,12 @@
 <script setup lang="ts">
 // . ݁₊ ✶. ݁ ˖ˎˊ˗ media library
-import { ref, onMounted } from 'vue'
+import { ref, h, onMounted } from 'vue'
+import { useVueTable, FlexRender, getCoreRowModel, getSortedRowModel } from '@tanstack/vue-table'
+import type { ColumnDef, SortingState } from '@tanstack/vue-table'
 import MediaDialog from '@/components/MediaDialog.vue'
 import { useMedia } from '@/composables/useMedia'
 import { useToast } from '@/composables/useToast'
-import type { MediaCreateBody, MediaUpdateBody } from '@/api/types'
+import type { Media, MediaCreateBody, MediaUpdateBody } from '@/api/types'
 
 const dialogEl = ref<InstanceType<typeof MediaDialog>>()
 const { media, loading, error, fetchMedia, createMedia, updateMedia, deleteMedia } = useMedia()
@@ -22,6 +24,72 @@ function formatDuration(seconds?: number | null): string {
   const s = String(seconds % 60).padStart(2, '0')
   return `${m}:${s}`
 }
+
+// ⋆˙⟡ ⋆.˚ column definitions
+const columns: ColumnDef<Media>[] = [
+  {
+    accessorKey: 'title',
+    header: 'title',
+    enableSorting: true,
+  },
+  {
+    accessorKey: 'artist',
+    header: 'artist',
+    enableSorting: true,
+    cell: ({ row }) => row.original.artist ?? '—',
+  },
+  {
+    accessorKey: 'fileFormat',
+    header: 'format',
+    enableSorting: false,
+    cell: ({ row }) => row.original.fileFormat ?? '—',
+  },
+  {
+    accessorKey: 'fileSizeBytes',
+    header: 'size',
+    enableSorting: true,
+    cell: ({ row }) => formatBytes(row.original.fileSizeBytes),
+  },
+  {
+    accessorKey: 'duration',
+    header: 'duration',
+    enableSorting: true,
+    cell: ({ row }) => formatDuration(row.original.duration),
+  },
+  {
+    accessorKey: 'downloadStatus',
+    header: 'status',
+    enableSorting: true,
+    cell: ({ row }) => h(
+      'span',
+      { class: `status ${row.original.downloadStatus ?? ''}`.trim() },
+      row.original.downloadStatus ?? '—',
+    ),
+  },
+  {
+    id: 'actions',
+    enableSorting: false,
+    cell: ({ row }) => h(
+      'button',
+      { class: 'edit-btn', onClick: () => dialogEl.value?.openEdit(row.original) },
+      'edit',
+    ),
+  },
+]
+
+const sorting = ref<SortingState>([])
+
+// ⊹ ₊ ⟡ tanstack table
+const table = useVueTable({
+  get data() { return media.value },
+  columns,
+  state: { get sorting() { return sorting.value } },
+  onSortingChange: updater => {
+    sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater
+  },
+  getCoreRowModel: getCoreRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+})
 
 async function onCreate(body: Omit<MediaCreateBody, '$schema'>) {
   try { await createMedia(body) } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to create media') }
@@ -46,33 +114,31 @@ onMounted(fetchMedia)
     </div>
 
     <p v-if="error" class="error-msg">{{ error }}</p>
-
     <div v-if="loading" class="empty">loading…</div>
 
     <table v-else-if="media.length > 0">
       <thead>
-        <tr>
-          <th>title</th>
-          <th>artist</th>
-          <th>format</th>
-          <th>size</th>
-          <th>duration</th>
-          <th>status</th>
-          <th></th>
+        <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
+          <th
+            v-for="header in headerGroup.headers"
+            :key="header.id"
+            :class="{ sortable: header.column.getCanSort() }"
+            @click="header.column.getToggleSortingHandler()?.($event)"
+          >
+            <FlexRender :render="header.column.columnDef.header" :props="header.getContext()" />
+            <span v-if="header.column.getIsSorted() === 'asc'" class="sort-icon">↑</span>
+            <span v-else-if="header.column.getIsSorted() === 'desc'" class="sort-icon">↓</span>
+          </th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="item in media" :key="item.id">
-          <td class="title-cell">{{ item.title }}</td>
-          <td>{{ item.artist ?? '—' }}</td>
-          <td>{{ item.fileFormat ?? '—' }}</td>
-          <td>{{ formatBytes(item.fileSizeBytes) }}</td>
-          <td>{{ formatDuration(item.duration) }}</td>
-          <td>
-            <span class="status" :class="item.downloadStatus">{{ item.downloadStatus }}</span>
-          </td>
-          <td>
-            <button class="edit-btn" @click="dialogEl?.openEdit(item)">edit</button>
+        <tr v-for="row in table.getRowModel().rows" :key="row.id">
+          <td
+            v-for="cell in row.getVisibleCells()"
+            :key="cell.id"
+            :class="{ 'title-cell': cell.column.id === 'title' }"
+          >
+            <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
           </td>
         </tr>
       </tbody>
@@ -102,24 +168,19 @@ onMounted(fetchMedia)
   justify-content: space-between;
 }
 
-h1 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0;
-}
+h1 { font-size: 1.1rem; font-weight: 600; margin: 0; }
 
 button.primary {
   padding: 0.45rem 1rem;
-  border-radius: 6px;
   border: none;
-  background: #111827;
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-size: 0.85rem;
   cursor: pointer;
   font-family: inherit;
 }
 
-button.primary:hover { background: #374151; }
+button.primary:hover { opacity: 0.85; }
 
 table {
   width: 100%;
@@ -132,58 +193,50 @@ th {
   padding: 0.5rem 0.75rem;
   font-size: 0.75rem;
   font-weight: 500;
-  color: #6b7280;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  user-select: none;
 }
+
+th.sortable { cursor: pointer; }
+th.sortable:hover { color: var(--foreground); }
+
+.sort-icon { margin-left: 0.25rem; opacity: 0.6; }
 
 td {
   padding: 0.65rem 0.75rem;
-  border-bottom: 1px solid #f3f4f6;
-  color: #374151;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted-foreground);
   vertical-align: middle;
 }
 
-.title-cell {
-  font-weight: 500;
-  color: #111827;
-}
+.title-cell { font-weight: 500; color: var(--foreground); }
 
-.status {
+/* ✶. ݁ ˖ status badge — tinted dark bg so it reads without being loud */
+:deep(.status) {
   font-size: 0.75rem;
   padding: 0.2rem 0.5rem;
-  border-radius: 99px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--muted);
+  color: var(--muted-foreground);
 }
 
-.status.ready   { background: #dcfce7; color: #166534; }
-.status.pending { background: #fef9c3; color: #854d0e; }
-.status.error   { background: #fee2e2; color: #991b1b; }
+:deep(.status.ready)   { background: oklch(0.15 0.04 145); color: oklch(0.7 0.18 145); }
+:deep(.status.pending) { background: oklch(0.15 0.04 75);  color: oklch(0.75 0.12 75); }
+:deep(.status.error)   { background: oklch(0.15 0.04 27);  color: var(--destructive); }
 
-.edit-btn {
+:deep(.edit-btn) {
   padding: 0.25rem 0.6rem;
-  border-radius: 5px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   background: transparent;
   font-size: 0.8rem;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--muted-foreground);
   font-family: inherit;
 }
 
-.edit-btn:hover {
-  background: #f3f4f6;
-  color: #111827;
-}
+:deep(.edit-btn:hover) { background: var(--muted); color: var(--foreground); }
 
-.empty {
-  color: #9ca3af;
-  font-size: 0.9rem;
-  padding: 2rem 0;
-}
-
-.error-msg {
-  color: #dc2626;
-  font-size: 0.85rem;
-}
+.empty { color: var(--muted-foreground); font-size: 0.9rem; padding: 2rem 0; }
+.error-msg { color: var(--destructive); font-size: 0.85rem; }
 </style>

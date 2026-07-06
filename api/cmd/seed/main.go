@@ -19,6 +19,7 @@ import (
 	"radioooooo/internal/episode"
 	"radioooooo/internal/media"
 	"radioooooo/internal/station"
+	"radioooooo/internal/tracklist"
 	"radioooooo/internal/user"
 )
 
@@ -193,17 +194,18 @@ func seedSchedule(
 	store *episode.Store,
 	stationID, channelID string,
 	mediaIDs []string,
-) (int, error) {
-	// monday of this week, midnight UTC ⋆˙⟡
+) ([]episode.Episode, error) {
+	// one week back, then 13 weeks forward ⋆˙⟡
 	now := time.Now().UTC()
 	weekday := int(now.Weekday())
 	if weekday == 0 {
 		weekday = 7
 	}
-	weekStart := time.Date(now.Year(), now.Month(), now.Day()-weekday+1, 0, 0, 0, 0, time.UTC)
+	thisMonday := time.Date(now.Year(), now.Month(), now.Day()-weekday+1, 0, 0, 0, 0, time.UTC)
+	weekStart := thisMonday.Add(-7 * 24 * time.Hour) // start one week back
 
-	count := 0
-	for week := range 13 {
+	var created []episode.Episode
+	for week := range 14 { // 1 past + 13 forward
 		for day := range 7 {
 			dayStart := weekStart.Add(time.Duration(week*7+day) * 24 * time.Hour)
 			cur := dayStart.Add(10 * time.Hour) // 10:00 ⊹ ࣪ ˖
@@ -223,7 +225,7 @@ func seedSchedule(
 					ref = mediaIDs[rng.Intn(len(mediaIDs))]
 				}
 
-				_, err := store.Create(ctx, episode.CreateParams{
+				ep, err := store.Create(ctx, episode.CreateParams{
 					ChannelID:     channelID,
 					StationID:     stationID,
 					Title:         showName(),
@@ -234,12 +236,46 @@ func seedSchedule(
 					SourceRef:     ref,
 				})
 				if err != nil {
-					return count, err
+					return created, err
 				}
-				count++
+				created = append(created, ep)
 				cur = end // ✶. ݁ no gap
 			}
 		}
+	}
+	return created, nil
+}
+
+// ✮ ⋆ ˚｡𖦹 seed tracklists for episodes that have already ended
+func seedTracklists(ctx context.Context, store *tracklist.Store, episodes []episode.Episode) (int, error) {
+	now := time.Now().UTC()
+	count := 0
+	for _, ep := range episodes {
+		if !ep.EndTime.Before(now) {
+			continue // only past episodes
+		}
+		durationSecs := int(ep.EndTime.Sub(ep.StartTime).Seconds())
+		trackCount := 4 + rng.Intn(9) // 4–12 tracks
+		inputs := make([]tracklist.TrackInput, 0, trackCount)
+		cursor := rng.Intn(300) // first track 0–5 min in
+		for range trackCount {
+			artist := gofakeit.FirstName() + " " + gofakeit.LastName()
+			at := cursor
+			inp := tracklist.TrackInput{
+				Title:     trackTitle(),
+				Artist:    &artist,
+				StartedAt: &at,
+			}
+			inputs = append(inputs, inp)
+			cursor += 180 + rng.Intn(420) // 3–10 min per track
+			if cursor >= durationSecs {
+				break
+			}
+		}
+		if _, err := store.SetTracks(ctx, ep.ID, inputs); err != nil {
+			return count, err
+		}
+		count++
 	}
 	return count, nil
 }
@@ -267,6 +303,7 @@ func run(ctx context.Context) error {
 	channels := channel.NewStore(db, "")
 	media := media.NewStore(db)
 	episodes := episode.NewStore(db)
+	tracklists := tracklist.NewStore(db)
 
 	st, err := seedStation(ctx, stations)
 	if err != nil {
@@ -296,11 +333,17 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("clearing episodes: %w", err)
 	}
 
-	n, err := seedSchedule(ctx, episodes, st.ID, ch.ID, mediaIDs)
+	created, err := seedSchedule(ctx, episodes, st.ID, ch.ID, mediaIDs)
 	if err != nil {
 		return fmt.Errorf("schedule: %w", err)
 	}
-	slog.Info("episodes", "count", n)
+	slog.Info("episodes", "count", len(created))
+
+	tl, err := seedTracklists(ctx, tracklists, created)
+	if err != nil {
+		return fmt.Errorf("tracklists: %w", err)
+	}
+	slog.Info("tracklists", "count", tl)
 
 	return nil
 }
