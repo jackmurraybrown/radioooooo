@@ -35,12 +35,24 @@ function onEventClick(id: string) {
   if (ep) dialogEl.value?.openEdit(ep)
 }
 
-async function onEventDrop(id: string, start: Date, end: Date) {
+async function onEventDrop(id: string, start: Date, end: Date, revert: () => void) {
   const ep = episodes.value.find(e => e.id === id)
-  if (!ep) return
+  if (!ep) { revert(); return }
   try {
-    await updateEpisode(id, { ...ep, startTime: start.toISOString(), endTime: end.toISOString() })
-  } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to move episode') }
+    await updateEpisode(id, {
+      title:         ep.title,
+      description:   ep.description,
+      startTime:     start.toISOString(),
+      endTime:       end.toISOString(),
+      type:          ep.type,
+      sourceAdapter: ep.sourceAdapter,
+      sourceRef:     ep.sourceRef,
+      contactEmail:  ep.contactEmail,
+    })
+  } catch (e) {
+    revert()
+    toast.error(e instanceof Error ? e.message : 'failed to move episode')
+  }
 }
 
 async function onCreate(body: Omit<EpisodeBody, '$schema'>) {

@@ -103,7 +103,7 @@ func (s *Store) Update(ctx context.Context, id, channelID, stationID string, p U
 		from channels c
 		where e.id=$1::uuid and e.channel_id=$2::uuid
 		  and e.channel_id=c.id and c.station_id=$11::uuid
-		returning`+retCols,
+		returning`+cols,
 		id, channelID, p.Title, p.Description, p.StartTime, p.EndTime, p.Type, p.SourceAdapter, p.SourceRef, p.ContactEmail, stationID,
 	)
 	if err != nil {

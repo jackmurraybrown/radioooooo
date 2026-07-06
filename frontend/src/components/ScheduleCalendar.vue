@@ -13,7 +13,7 @@ defineProps<{
 const emit = defineEmits<{
   eventClick: [id: string]
   dateSelect: [start: Date, end: Date]
-  eventDrop: [id: string, start: Date, end: Date]
+  eventDrop: [id: string, start: Date, end: Date, revert: () => void]
 }>()
 
 const calendarOptions: CalendarOptions = {
@@ -37,7 +37,7 @@ const calendarOptions: CalendarOptions = {
     emit('eventClick', info.event.id)
   },
   eventDrop(info) {
-    emit('eventDrop', info.event.id, info.event.start!, info.event.end!)
+    emit('eventDrop', info.event.id, info.event.start!, info.event.end!, info.revert)
   },
 }
 </script>
