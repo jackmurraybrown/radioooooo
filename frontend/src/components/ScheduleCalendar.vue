@@ -62,6 +62,26 @@ const calendarOptions = computed<CalendarOptions>(() => ({
   slotDuration: prefs.value.slotDuration,
   height: '100%',
   stickyHeaderDates: true,
+  // ⊹ ₊ ⟡ show type badge top-right for non-live episodes
+  eventContent(info) {
+    const type = info.event.extendedProps.type as string
+    const wrap = document.createElement('div')
+    wrap.className = 'ep-event'
+
+    const title = document.createElement('div')
+    title.className = 'ep-title'
+    title.textContent = info.event.title
+    wrap.appendChild(title)
+
+    if (type && type !== 'live') {
+      const badge = document.createElement('span')
+      badge.className = 'ep-type-badge'
+      badge.textContent = type
+      wrap.appendChild(badge)
+    }
+
+    return { domNodes: [wrap] }
+  },
   select(info) {
     emit('dateSelect', info.start, info.end)
   },
@@ -139,5 +159,39 @@ const calendarOptions = computed<CalendarOptions>(() => ({
 .cal-wrap :deep(.fc-button-active),
 .cal-wrap :deep(.fc-button-active:hover) {
   color: var(--primary-foreground) !important;
+}
+
+/* ✮ ⋆ ˚｡𖦹 custom event content layout */
+.cal-wrap :deep(.ep-event) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1px 3px;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.cal-wrap :deep(.ep-title) {
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.3;
+  flex: 1;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+/* ⋆˙⟡ type badge — sits bottom-right, small + semi-transparent */
+.cal-wrap :deep(.ep-type-badge) {
+  position: absolute;
+  bottom: 2px;
+  right: 3px;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  line-height: 1;
 }
 </style>

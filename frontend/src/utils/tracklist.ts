@@ -1,7 +1,8 @@
 export interface Track {
-  title: string
-  artist: string
-  time: string
+  title:   string
+  artist:  string
+  time:    string  // startedAt — seconds offset from episode start
+  endTime: string  // endedAt  — optional
 }
 
 export function secondsToTime(s: number | null): string {

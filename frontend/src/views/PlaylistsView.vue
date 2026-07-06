@@ -2,6 +2,7 @@
 // ⊹ ࣪ ˖ playlists — master list + item detail panel
 import { ref, onMounted } from 'vue'
 import PlaylistDialog from '@/components/PlaylistDialog.vue'
+import MediaPicker from '@/components/MediaPicker.vue'
 import { usePlaylists } from '@/composables/usePlaylists'
 import { useMedia } from '@/composables/useMedia'
 import { useToast } from '@/composables/useToast'
@@ -55,6 +56,12 @@ async function onAddItem() {
     await addItem(active.value.id, addMediaId.value)
     addMediaId.value = ''
   } catch (e) { toast.error(e instanceof Error ? e.message : 'failed to add track') }
+}
+
+// ⊹ ₊ ⟡ refresh media list after upload so the picker shows the new track
+async function onMediaUploaded(id: string) {
+  await fetchMedia()
+  addMediaId.value = id
 }
 
 async function onRemoveItem(itemId: string) {
@@ -130,14 +137,13 @@ onMounted(() => {
 
         <div v-else class="empty">no tracks yet</div>
 
-        <!-- add track -->
-        <div class="add-track" v-if="media.length > 0">
-          <select v-model="addMediaId">
-            <option value="" disabled>pick a track…</option>
-            <option v-for="m in media" :key="m.id" :value="m.id">
-              {{ m.title }}{{ m.artist ? ` — ${m.artist}` : '' }}
-            </option>
-          </select>
+        <!-- ✮ ⋆ ˚｡𖦹 add track — searchable picker + upload -->
+        <div class="add-track">
+          <MediaPicker
+            v-model="addMediaId"
+            :media="media"
+            @media-added="onMediaUploaded"
+          />
           <button class="primary" :disabled="!addMediaId" @click="onAddItem">add</button>
         </div>
       </section>
@@ -309,21 +315,11 @@ li.active { background: var(--muted); border-left: 2px solid var(--foreground); 
 
 .add-track {
   display: flex;
+  flex-direction: column;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
-}
-
-.add-track select {
-  flex: 1;
-  font-size: 0.88rem;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid var(--border);
-  outline: none;
-  font-family: inherit;
-  background: var(--input);
-  color: var(--foreground);
 }
 
 .add-track select:focus { border-color: var(--ring); }

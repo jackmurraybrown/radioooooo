@@ -8,6 +8,7 @@ import { usePlaylists } from '@/composables/usePlaylists'
 import { api } from '@/api/client'
 import { useToast } from '@/composables/useToast'
 import TracklistEditor from '@/components/TracklistEditor.vue'
+import MediaPicker from '@/components/MediaPicker.vue'
 import { secondsToTime, timeToSeconds, type Track } from '@/utils/tracklist'
 import { TabsRoot, TabsList, TabsTrigger, TabsContent } from 'reka-ui'
 
@@ -31,6 +32,12 @@ const { media, fetchMedia } = useMedia()
 const { playlists, fetchPlaylists } = usePlaylists()
 onMounted(() => { fetchMedia(); fetchPlaylists() })
 
+// ⊹ ₊ ⟡ after upload: refresh full list so combobox displayValue resolves the title
+async function onMediaAdded(id: string, _title: string) {
+  await fetchMedia()
+  form.sourceRef = id
+}
+
 // ⊹ ࣪ ˖ sourceAdapter is fully determined by type
 const adapterForType: Record<EpisodeType, string> = {
   live: 'icecast',
@@ -41,7 +48,7 @@ const adapterForType: Record<EpisodeType, string> = {
 
 const refLabel: Record<EpisodeType, string> = {
   live: 'mount point',
-  recorded: 'media id',
+  recorded: 'audio track',
   external: 'stream url',
   playlist: 'playlist id',
 }
@@ -129,11 +136,12 @@ async function fetchTracks() {
     if (!res.ok) throw new Error(`${res.status}`)
     const data = await res.json()
     tracks.value = (data.tracks ?? []).map((t: any) => ({
-      title: t.title,
-      artist: t.artist ?? '',
-      time: secondsToTime(t.startedAt ?? null),
+      title:   t.title,
+      artist:  t.artist ?? '',
+      time:    secondsToTime(t.startedAt ?? null),
+      endTime: secondsToTime(t.endedAt ?? null),
     }))
-    if (tracks.value.length === 0) tracks.value.push({ title: '', artist: '', time: '' })
+    if (tracks.value.length === 0) tracks.value.push({ title: '', artist: '', time: '', endTime: '' })
   } catch {
     tracksError.value = 'failed to load tracks'
   } finally {
@@ -151,9 +159,10 @@ async function saveTracks() {
       tracks: tracks.value
         .filter(t => t.title.trim())
         .map(t => ({
-          title: t.title.trim(),
-          artist: t.artist.trim() || undefined,
+          title:     t.title.trim(),
+          artist:    t.artist.trim() || undefined,
           startedAt: timeToSeconds(t.time),
+          endedAt:   timeToSeconds(t.endTime) ?? undefined,
         })),
     })
     if (!res.ok) throw new Error(`${res.status}`)
@@ -287,16 +296,16 @@ defineExpose({ openCreate, openEdit, close })
             </div>
 
             <div class="field">
-              <label for="ep-ref">{{ refLabel[form.type] }}</label>
+              <label>{{ refLabel[form.type] }}</label>
 
-              <!-- ⊹ ₊ recorded — pick from media library -->
-              <select v-if="form.type === 'recorded'" id="ep-ref" v-model="form.sourceRef"
-                :class="{ error: errors.sourceRef }">
-                <option value="" disabled>select a track…</option>
-                <option v-for="m in media" :key="m.id" :value="m.id">
-                  {{ m.title }}{{ m.artist ? ` — ${m.artist}` : '' }}
-                </option>
-              </select>
+              <!-- ⊹ ₊ recorded — searchable picker with upload -->
+              <MediaPicker
+                v-if="form.type === 'recorded'"
+                v-model="form.sourceRef"
+                :media="media"
+                :class="{ error: errors.sourceRef }"
+                @media-added="onMediaAdded"
+              />
 
               <!-- ⋆˙⟡ playlist — pick from playlists -->
               <select v-else-if="form.type === 'playlist'" id="ep-ref" v-model="form.sourceRef"
@@ -386,6 +395,7 @@ dialog {
   border: 1px solid var(--border);
   padding: 0;
   width: min(560px, 90vw);
+  min-height: 700px;
   background: var(--background);
   color: var(--foreground);
 }

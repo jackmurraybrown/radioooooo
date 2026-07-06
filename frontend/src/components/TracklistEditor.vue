@@ -9,27 +9,46 @@ const props = defineProps<{
   episodeDuration?: number // seconds — 0 or undefined means no duration check
 }>()
 
-// ✶. ݁ ˖ client-side validation
+// ✶. ݁ ˖ client-side validation — all four fields required on touched rows
 const validationErrors = computed(() => {
   const errs: string[] = []
-  const filled = tracks.value.filter(t => t.title.trim())
-  if (filled.length === 0) return errs
+  // a row is "touched" if any field has content
+  const active = tracks.value.filter(t =>
+    t.title.trim() || t.artist.trim() || t.time.trim() || t.endTime.trim()
+  )
+  if (active.length === 0) return errs
+
   for (let i = 0; i < tracks.value.length; i++) {
-    const t    = tracks.value[i]
+    const t = tracks.value[i]
+    const anyFilled = t.title.trim() || t.artist.trim() || t.time.trim() || t.endTime.trim()
+    if (!anyFilled) continue
+
+    if (!t.title.trim())   errs.push(`track ${i + 1}: title is required`)
+    if (!t.artist.trim())  errs.push(`track ${i + 1}: artist is required`)
+    if (!t.time.trim())    errs.push(`track ${i + 1}: start time is required`)
+    if (!t.endTime.trim()) errs.push(`track ${i + 1}: end time is required`)
+
     const secs = timeToSeconds(t.time)
+    const endSecs = timeToSeconds(t.endTime)
     if (t.time.trim() && secs == null)
-      errs.push(`track ${i + 1}: invalid time format (use mm:ss or h:mm:ss)`)
+      errs.push(`track ${i + 1}: invalid start time (use mm:ss or h:mm:ss)`)
+    if (t.endTime.trim() && endSecs == null)
+      errs.push(`track ${i + 1}: invalid end time (use mm:ss or h:mm:ss)`)
     if (secs != null && secs < 0)
-      errs.push(`track ${i + 1}: time can't be negative`)
+      errs.push(`track ${i + 1}: start time can't be negative`)
+    if (secs != null && endSecs != null && endSecs <= secs)
+      errs.push(`track ${i + 1}: end time must be after start time`)
     if (secs != null && props.episodeDuration && secs > props.episodeDuration)
-      errs.push(`track ${i + 1}: time exceeds episode duration`)
+      errs.push(`track ${i + 1}: start time exceeds episode duration`)
   }
+
+  // ⊹ ₊ ⟡ start times must be ascending across tracks
   const times = tracks.value
     .map((t, i) => ({ i, secs: timeToSeconds(t.time) }))
     .filter(x => x.secs != null)
   for (let j = 1; j < times.length; j++) {
     if (times[j].secs! < times[j - 1].secs!)
-      errs.push(`track ${times[j].i + 1}: time is earlier than previous track`)
+      errs.push(`track ${times[j].i + 1}: start time is earlier than previous track`)
   }
   return errs
 })
@@ -37,7 +56,7 @@ const validationErrors = computed(() => {
 const isValid = computed(() => validationErrors.value.length === 0)
 
 function addTrack() {
-  tracks.value.push({ title: '', artist: '', time: '' })
+  tracks.value.push({ title: '', artist: '', time: '', endTime: '' })
 }
 
 function removeTrack(i: number) {
@@ -63,23 +82,27 @@ defineExpose({ isValid, validationErrors, timeToSeconds })
       <thead>
         <tr>
           <th class="col-num">#</th>
-          <th class="col-time">time</th>
-          <th class="col-artist">artist</th>
           <th class="col-title">title</th>
+          <th class="col-artist">artist</th>
+          <th class="col-time">start</th>
+          <th class="col-time">end</th>
           <th class="col-actions"></th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="(track, i) in tracks" :key="i">
           <td class="col-num">{{ i + 1 }}</td>
-          <td class="col-time">
-            <input v-model="track.time" placeholder="mm:ss" />
+          <td class="col-title">
+            <input v-model="track.title" placeholder="title" />
           </td>
           <td class="col-artist">
             <input v-model="track.artist" placeholder="artist" />
           </td>
-          <td class="col-title">
-            <input v-model="track.title" placeholder="title *" />
+          <td class="col-time">
+            <input v-model="track.time" placeholder="mm:ss" />
+          </td>
+          <td class="col-time">
+            <input v-model="track.endTime" placeholder="mm:ss" />
           </td>
           <td class="col-actions">
             <button type="button" @click="moveUp(i)"   :disabled="i === 0"                   class="btn-icon">↑</button>

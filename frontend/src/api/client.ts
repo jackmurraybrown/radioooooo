@@ -36,3 +36,14 @@ export function api(path: string) {
     delete: () => apiFetch(path, { method: 'DELETE' }),
   }
 }
+
+// ⊹ ₊ ⟡ multipart upload — no Content-Type so browser sets boundary automatically
+export async function apiUpload(path: string, data: FormData): Promise<Response> {
+  const auth = useAuthStore()
+  const authHeader = auth.accessToken ? { Authorization: `Bearer ${auth.accessToken}` } : {}
+  const res = await fetch(`${BASE}${path}`, { method: 'POST', body: data, headers: authHeader })
+  if (res.status !== 401) return res
+  await auth.refresh()
+  const retryHeader = auth.accessToken ? { Authorization: `Bearer ${auth.accessToken}` } : {}
+  return fetch(`${BASE}${path}`, { method: 'POST', body: data, headers: retryHeader })
+}

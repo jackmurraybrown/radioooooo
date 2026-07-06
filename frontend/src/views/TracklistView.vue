@@ -46,11 +46,12 @@ onMounted(async () => {
     const data = await res.json()
     episode.value = data.episode
     tracks.value  = (data.tracks ?? []).map((t: any) => ({
-      title:  t.title,
-      artist: t.artist ?? '',
-      time:   secondsToTime(t.startedAt ?? null),
+      title:   t.title,
+      artist:  t.artist ?? '',
+      time:    secondsToTime(t.startedAt ?? null),
+      endTime: secondsToTime(t.endedAt ?? null),
     }))
-    if (tracks.value.length === 0) tracks.value.push({ title: '', artist: '', time: '' })
+    if (tracks.value.length === 0) tracks.value.push({ title: '', artist: '', time: '', endTime: '' })
   } finally {
     loading.value = false
   }
@@ -72,6 +73,7 @@ async function save() {
             title:     t.title.trim(),
             artist:    t.artist.trim() || undefined,
             startedAt: timeToSeconds(t.time),
+            endedAt:   timeToSeconds(t.endTime) ?? undefined,
           })),
       }),
     })
