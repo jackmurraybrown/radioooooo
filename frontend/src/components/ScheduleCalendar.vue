@@ -5,6 +5,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { CalendarOptions, EventInput } from '@fullcalendar/core'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 defineProps<{
   events: EventInput[]
@@ -15,6 +16,31 @@ const emit = defineEmits<{
   dateSelect: [start: Date, end: Date]
   eventDrop: [id: string, start: Date, end: Date, revert: () => void]
 }>()
+
+const calendarRef = ref<InstanceType<typeof FullCalendar>>()
+
+// ⋆˙⟡ skip shortcuts when user is typing in an input
+function isTyping(e: KeyboardEvent) {
+  const tag = (e.target as HTMLElement).tagName
+  return tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable
+}
+
+function onKeyDown(e: KeyboardEvent) {
+  if (isTyping(e)) return
+  const api = calendarRef.value?.getApi()
+  if (!api) return
+  switch (e.key) {
+    case 'ArrowLeft':  case 'h': api.prev(); break
+    case 'ArrowRight': case 'l': api.next(); break
+    case 't':                    api.today(); break
+    case 'd':                    api.changeView('timeGridDay'); break
+    case 'w':                    api.changeView('timeGridWeek'); break
+    case 'm':                    api.changeView('dayGridMonth'); break
+  }
+}
+
+onMounted(()  => window.addEventListener('keydown', onKeyDown))
+onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
 
 const calendarOptions: CalendarOptions = {
   plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
@@ -43,5 +69,5 @@ const calendarOptions: CalendarOptions = {
 </script>
 
 <template>
-  <FullCalendar :options="{ ...calendarOptions, events }" />
+  <FullCalendar ref="calendarRef" :options="{ ...calendarOptions, events }" />
 </template>
