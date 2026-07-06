@@ -25,6 +25,5 @@ import ToastContainer from './ToastContainer.vue'
 .content {
   flex: 1;
   overflow-y: auto;
-  padding: 2rem;
 }
 </style>

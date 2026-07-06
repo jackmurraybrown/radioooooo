@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // ✮⋆‧°—°‧⋆✮ station settings — profile + channels
 import { ref, reactive, watch, onMounted } from 'vue'
+import { useCalendarPrefs } from '@/composables/useCalendarPrefs'
 import * as v from 'valibot'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
@@ -10,6 +11,7 @@ import type { Station, Channel } from '@/api/types'
 
 const auth = useAuthStore()
 const toast = useToast()
+const { prefs: calPrefs } = useCalendarPrefs()
 
 // ⊹ ₊ ⟡ station profile
 const station = ref<Station | null>(null)
@@ -18,9 +20,9 @@ const saving = ref(false)
 const fetchError = ref<string | null>(null)
 
 const profileSchema = v.object({
-  name:                v.pipe(v.string(), v.minLength(1, 'required'), v.maxLength(100)),
-  slug:                v.pipe(v.string(), v.minLength(1, 'required'), v.maxLength(50), v.regex(/^[a-z0-9-]+$/, 'lowercase letters, numbers and hyphens only')),
-  logoUrl:             v.optional(v.string()),
+  name: v.pipe(v.string(), v.minLength(1, 'required'), v.maxLength(100)),
+  slug: v.pipe(v.string(), v.minLength(1, 'required'), v.maxLength(50), v.regex(/^[a-z0-9-]+$/, 'lowercase letters, numbers and hyphens only')),
+  logoUrl: v.optional(v.string()),
   tracklistWebhookUrl: v.optional(v.string()),
 })
 
@@ -30,9 +32,9 @@ const form = reactive<ProfileForm>({ name: '', slug: '', logoUrl: '', tracklistW
 const { errors, validate } = useValidation(profileSchema)
 
 function populate(st: Station) {
-  form.name                = st.name
-  form.slug                = st.slug
-  form.logoUrl             = st.logoUrl ?? ''
+  form.name = st.name
+  form.slug = st.slug
+  form.logoUrl = st.logoUrl ?? ''
   form.tracklistWebhookUrl = st.tracklistWebhookUrl ?? ''
 }
 
@@ -57,9 +59,9 @@ async function save() {
   saving.value = true
   try {
     const res = await api(`/stations/${auth.stationId}`).put({
-      name:                form.name,
-      slug:                form.slug,
-      logoUrl:             form.logoUrl || undefined,
+      name: form.name,
+      slug: form.slug,
+      logoUrl: form.logoUrl || undefined,
       tracklistWebhookUrl: form.tracklistWebhookUrl || undefined,
     })
     if (!res.ok) throw new Error(`${res.status}`)
@@ -221,12 +223,8 @@ onMounted(() => {
           <li v-for="ch in channels" :key="ch.id">
             <span class="ch-name">{{ ch.name }}</span>
             <span class="ch-slug">{{ ch.slug }}</span>
-            <button
-              v-if="channels.length > 1"
-              class="delete-btn"
-              @click="promptDelete(ch.id, ch.name)"
-              aria-label="delete channel"
-            >✕</button>
+            <button v-if="channels.length > 1" class="delete-btn" @click="promptDelete(ch.id, ch.name)"
+              aria-label="delete channel">✕</button>
           </li>
         </ul>
         <p v-else class="empty-inline">no channels yet</p>
@@ -235,21 +233,13 @@ onMounted(() => {
         <form @submit.prevent="createChannel" novalidate class="new-channel-form">
           <div class="new-channel-fields">
             <div class="field">
-              <input
-                v-model="newChannel.name"
-                placeholder="channel name"
-                :class="{ error: channelErrors.name }"
-                maxlength="100"
-              />
+              <input v-model="newChannel.name" placeholder="channel name" :class="{ error: channelErrors.name }"
+                maxlength="100" />
               <span v-if="channelErrors.name" class="err">{{ channelErrors.name }}</span>
             </div>
             <div class="field">
-              <input
-                v-model="newChannel.slug"
-                placeholder="slug"
-                :class="{ error: channelErrors.slug }"
-                maxlength="50"
-              />
+              <input v-model="newChannel.slug" placeholder="slug" :class="{ error: channelErrors.slug }"
+                maxlength="50" />
               <span v-if="channelErrors.slug" class="err">{{ channelErrors.slug }}</span>
             </div>
           </div>
@@ -257,6 +247,31 @@ onMounted(() => {
             {{ channelCreating ? 'creating…' : 'add channel' }}
           </button>
         </form>
+      </section>
+
+      <!-- calendar display preferences — stored locally -->
+      <section>
+        <h2>calendar</h2>
+        <div class="field">
+          <label>start of week</label>
+          <select v-model.number="calPrefs.firstDay">
+            <option :value="1">monday</option>
+            <option :value="0">sunday</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>scroll to time</label>
+          <input type="time" v-model="calPrefs.scrollTime" step="1800" />
+        </div>
+        <div class="field">
+          <label>slot duration</label>
+          <select v-model="calPrefs.slotDuration">
+            <option value="00:15:00">15 minutes</option>
+            <option value="00:30:00">30 minutes</option>
+            <option value="01:00:00">1 hour</option>
+          </select>
+        </div>
+        <p class="hint">changes apply immediately on the schedule page.</p>
       </section>
     </template>
   </div>
@@ -276,10 +291,15 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  padding: 2rem;
   max-width: 520px;
 }
 
-h1 { font-size: 1.1rem; font-weight: 600; margin: 0; }
+h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
 
 h2 {
   font-size: 0.8rem;
@@ -298,7 +318,11 @@ section {
   border: 1px solid var(--border);
 }
 
-.field { display: flex; flex-direction: column; gap: 0.3rem; }
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
 
 label {
   font-size: 0.8rem;
@@ -309,7 +333,12 @@ label {
   gap: 0.5rem;
 }
 
-.label-hint { font-size: 0.73rem; color: var(--muted-foreground); font-weight: 400; opacity: 0.7; }
+.label-hint {
+  font-size: 0.73rem;
+  color: var(--muted-foreground);
+  font-weight: 400;
+  opacity: 0.7;
+}
 
 input {
   font-size: 0.9rem;
@@ -321,12 +350,24 @@ input {
   background: var(--input);
 }
 
-input:focus { border-color: var(--ring); }
+input:focus {
+  border-color: var(--ring);
+}
 
-input.error { border-color: var(--destructive); }
-.err { font-size: 0.75rem; color: var(--destructive); }
+input.error {
+  border-color: var(--destructive);
+}
 
-.logo-row { display: flex; align-items: center; gap: 0.75rem; }
+.err {
+  font-size: 0.75rem;
+  color: var(--destructive);
+}
+
+.logo-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
 
 /* TODO: support uploading logo directly, not just a url */
 .logo-preview {
@@ -349,9 +390,15 @@ input.error { border-color: var(--destructive); }
   flex-shrink: 0;
 }
 
-.logo-input { flex: 1; }
+.logo-input {
+  flex: 1;
+}
 
-.form-footer { display: flex; align-items: center; justify-content: flex-end; }
+.form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
 
 /* ⊹ ₊ ⟡ channel list */
 .channel-list {
@@ -372,8 +419,16 @@ input.error { border-color: var(--destructive); }
   font-size: 0.88rem;
 }
 
-.ch-name { font-weight: 500; color: var(--foreground); flex: 1; }
-.ch-slug { font-size: 0.78rem; color: var(--muted-foreground); }
+.ch-name {
+  font-weight: 500;
+  color: var(--foreground);
+  flex: 1;
+}
+
+.ch-slug {
+  font-size: 0.78rem;
+  color: var(--muted-foreground);
+}
 
 .delete-btn {
   background: none;
@@ -387,7 +442,10 @@ input.error { border-color: var(--destructive); }
   opacity: 0.5;
 }
 
-.delete-btn:hover { color: var(--destructive); opacity: 1; }
+.delete-btn:hover {
+  color: var(--destructive);
+  opacity: 1;
+}
 
 .new-channel-form {
   display: flex;
@@ -397,10 +455,21 @@ input.error { border-color: var(--destructive); }
   border-top: 1px solid var(--border);
 }
 
-.new-channel-fields { display: flex; gap: 0.5rem; flex: 1; }
-.new-channel-fields .field { flex: 1; }
+.new-channel-fields {
+  display: flex;
+  gap: 0.5rem;
+  flex: 1;
+}
 
-.empty-inline { font-size: 0.85rem; color: var(--muted-foreground); margin: 0; }
+.new-channel-fields .field {
+  flex: 1;
+}
+
+.empty-inline {
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+  margin: 0;
+}
 
 button.primary {
   padding: 0.45rem 1.25rem;
@@ -413,11 +482,24 @@ button.primary {
   white-space: nowrap;
 }
 
-button.primary:hover { opacity: 0.85; }
-button.primary:disabled { opacity: 0.5; cursor: default; }
+button.primary:hover {
+  opacity: 0.85;
+}
 
-.empty { font-size: 0.9rem; color: var(--muted-foreground); }
-.error-msg { font-size: 0.9rem; color: var(--destructive); }
+button.primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.empty {
+  font-size: 0.9rem;
+  color: var(--muted-foreground);
+}
+
+.error-msg {
+  font-size: 0.9rem;
+  color: var(--destructive);
+}
 
 .confirm-dialog {
   border: 1px solid var(--border);
@@ -427,10 +509,20 @@ button.primary:disabled { opacity: 0.5; cursor: default; }
   color: var(--foreground);
 }
 
-.confirm-dialog::backdrop { background: oklch(0 0 0 / 0.65); }
-.confirm-dialog p { margin: 0 0 1.25rem; font-size: 0.9rem; }
+.confirm-dialog::backdrop {
+  background: oklch(0 0 0 / 0.65);
+}
 
-.confirm-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+.confirm-dialog p {
+  margin: 0 0 1.25rem;
+  font-size: 0.9rem;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
 
 button.danger {
   padding: 0.45rem 1.25rem;
@@ -442,5 +534,23 @@ button.danger {
   font-family: inherit;
 }
 
-button.danger:hover { opacity: 0.85; }
+button.danger:hover {
+  opacity: 0.85;
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  margin: 0;
+}
+
+input[type="time"] {
+  border: 1px solid var(--border);
+  background: var(--input);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.5rem;
+  color-scheme: dark;
+}
 </style>

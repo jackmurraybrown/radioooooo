@@ -160,6 +160,7 @@ onMounted(fetchMedia)
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  padding: 2rem;
 }
 
 .toolbar {

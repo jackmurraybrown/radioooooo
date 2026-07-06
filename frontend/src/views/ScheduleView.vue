@@ -72,27 +72,28 @@ onMounted(loadChannels)
 
 <template>
   <div class="schedule-page">
-    <div class="toolbar">
-      <select
-        v-if="channels.length > 1"
-        v-model="activeChannelId"
-        class="channel-select"
-      >
-        <option v-for="ch in channels" :key="ch.id" :value="ch.id">
-          {{ ch.name }}
-        </option>
-      </select>
-      <span v-else-if="channels.length === 1" class="channel-name">
-        {{ channels[0].name }}
-      </span>
-    </div>
-
     <ScheduleCalendar
       :events="events"
       @date-select="onDateSelect"
       @event-click="onEventClick"
       @event-drop="onEventDrop"
-    />
+    >
+      <template #header-right>
+        <span class="channel-label">channel</span>
+        <select
+          v-if="channels.length > 1"
+          v-model="activeChannelId"
+          class="channel-select"
+        >
+          <option v-for="ch in channels" :key="ch.id" :value="ch.id">
+            {{ ch.name }}
+          </option>
+        </select>
+        <span v-else-if="channels.length === 1" class="channel-name">
+          {{ channels[0].name }}
+        </span>
+      </template>
+    </ScheduleCalendar>
 
     <EpisodeDialog
       ref="dialogEl"
@@ -107,19 +108,18 @@ onMounted(loadChannels)
 .schedule-page {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
   height: 100%;
+  overflow: hidden;
 }
 
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+.channel-label {
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
 }
 
 .channel-select {
-  font-size: 0.9rem;
-  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.4rem;
   border: 1px solid var(--border);
   background: var(--input);
   color: var(--foreground);
@@ -131,8 +131,7 @@ onMounted(loadChannels)
 .channel-select:focus { border-color: var(--ring); }
 
 .channel-name {
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 0.8rem;
   color: var(--foreground);
 }
 </style>
