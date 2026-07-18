@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Recursive";
+  src: url("./assets/recursive.woff2") format("woff2");
+  font-weight: 300 1000;
+  font-style: normal;
+  font-display: swap;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Recursive", ui-monospace, monospace;
+  --font-mono: var(--font-sans);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+}
+
+/* TODO: update color palette */
+:root {
+  --radius: 0px;
+  --background: oklch(0.06 0 0);
+  --foreground: oklch(0.94 0 0);
+  --muted: oklch(0.11 0 0);
+  --muted-foreground: oklch(0.5 0 0);
+  --border: oklch(0.22 0 0);
+  --input: oklch(0.11 0 0);
+  --ring: oklch(0.55 0 0);
+  --primary: oklch(0.94 0 0);
+  --primary-foreground: oklch(0.06 0 0);
+  --destructive: oklch(0.65 0.22 27);
+
+  /* ⊹ ₊ ⟡ fullcalendar dark overrides */
+  --fc-border-color: var(--border);
+  --fc-button-bg-color: var(--muted);
+  --fc-button-border-color: var(--border);
+  --fc-button-text-color: var(--foreground);
+  --fc-button-hover-bg-color: var(--border);
+  --fc-button-hover-border-color: var(--ring);
+  --fc-button-active-bg-color: var(--primary);
+  --fc-button-active-border-color: var(--primary);
+  --fc-button-active-text-color: var(--primary-foreground);
+  --fc-today-bg-color: oklch(0.1 0 0);
+  --fc-page-bg-color: var(--background);
+  --fc-neutral-bg-color: var(--muted);
+  --fc-neutral-text-color: var(--muted-foreground);
+  --fc-event-bg-color: var(--foreground);
+  --fc-event-border-color: var(--foreground);
+  --fc-event-text-color: var(--primary-foreground);
+  --fc-list-event-hover-bg-color: var(--muted);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+  dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+  }
+  h1 {
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+  h2 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted-foreground);
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings:
+      "MONO" 1,
+      "CASL" 0;
+  }
+}
+
+/* ⊹ ₊ ⟡ shared form primitives */
+@layer components {
+  .field {
+    @apply flex flex-col gap-1;
+  }
+  .field label {
+    @apply text-xs font-medium text-[--muted-foreground];
+  }
+  .input,
+  .select,
+  .textarea {
+    @apply w-full border border-[--border] bg-[--muted] px-3 py-1.5 text-sm text-[--foreground]
+      font-sans
+      placeholder:text-[--muted-foreground]
+      focus:outline-none focus:ring-1 focus:ring-[--ring]
+      disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .input.error,
+  .select.error,
+  .textarea.error {
+    @apply border-[--destructive] focus:ring-[--destructive]/30;
+  }
+  .select {
+    @apply appearance-none;
+  }
+  .textarea {
+    @apply resize-none;
+  }
+}

@@ -67,10 +67,12 @@ type feedOutput struct {
 	Body Feed
 }
 
+type feedListBody struct {
+	Feeds []Feed `json:"feeds"`
+}
+
 type listOutput struct {
-	Body struct {
-		Feeds []Feed `json:"feeds"`
-	}
+	Body feedListBody
 }
 
 type deleteInput struct {

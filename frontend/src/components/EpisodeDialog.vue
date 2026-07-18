@@ -7,7 +7,10 @@ import { useMedia } from '@/composables/useMedia'
 import { usePlaylists } from '@/composables/usePlaylists'
 import { api } from '@/api/client'
 import { useToast } from '@/composables/useToast'
-import TracklistEditor, { secondsToTime, timeToSeconds, type Track } from '@/components/TracklistEditor.vue'
+import TracklistEditor from '@/components/TracklistEditor.vue'
+import MediaPicker from '@/components/MediaPicker.vue'
+import { secondsToTime, timeToSeconds, type Track } from '@/utils/tracklist'
+import { TabsRoot, TabsList, TabsTrigger, TabsContent } from 'reka-ui'
 
 type EpisodeType = EpisodeBody['type']
 
@@ -29,6 +32,12 @@ const { media, fetchMedia } = useMedia()
 const { playlists, fetchPlaylists } = usePlaylists()
 onMounted(() => { fetchMedia(); fetchPlaylists() })
 
+// ⊹ ₊ ⟡ after upload: refresh full list so combobox displayValue resolves the title
+async function onMediaAdded(id: string, _title: string) {
+  await fetchMedia()
+  form.sourceRef = id
+}
+
 // ⊹ ࣪ ˖ sourceAdapter is fully determined by type
 const adapterForType: Record<EpisodeType, string> = {
   live: 'icecast',
@@ -39,7 +48,7 @@ const adapterForType: Record<EpisodeType, string> = {
 
 const refLabel: Record<EpisodeType, string> = {
   live: 'mount point',
-  recorded: 'media id',
+  recorded: 'audio track',
   external: 'stream url',
   playlist: 'playlist id',
 }
@@ -105,11 +114,11 @@ const editorRef = ref<InstanceType<typeof TracklistEditor>>()
 
 const tracks = ref<Track[]>([])
 const tracksLoading = ref(false)
-const tracksSaving  = ref(false)
-const tracksSaved   = ref(false)
-const tracksError   = ref<string | null>(null)
-const linkCopied    = ref(false)
-const linkLoading   = ref(false)
+const tracksSaving = ref(false)
+const tracksSaved = ref(false)
+const tracksError = ref<string | null>(null)
+const linkCopied = ref(false)
+const linkLoading = ref(false)
 
 const episodeDuration = computed(() => {
   if (!form.startTime || !form.endTime) return 0
@@ -127,11 +136,12 @@ async function fetchTracks() {
     if (!res.ok) throw new Error(`${res.status}`)
     const data = await res.json()
     tracks.value = (data.tracks ?? []).map((t: any) => ({
-      title: t.title,
-      artist: t.artist ?? '',
-      time: secondsToTime(t.startedAt ?? null),
+      title:   t.title,
+      artist:  t.artist ?? '',
+      time:    secondsToTime(t.startedAt ?? null),
+      endTime: secondsToTime(t.endedAt ?? null),
     }))
-    if (tracks.value.length === 0) tracks.value.push({ title: '', artist: '', time: '' })
+    if (tracks.value.length === 0) tracks.value.push({ title: '', artist: '', time: '', endTime: '' })
   } catch {
     tracksError.value = 'failed to load tracks'
   } finally {
@@ -149,9 +159,10 @@ async function saveTracks() {
       tracks: tracks.value
         .filter(t => t.title.trim())
         .map(t => ({
-          title: t.title.trim(),
-          artist: t.artist.trim() || undefined,
+          title:     t.title.trim(),
+          artist:    t.artist.trim() || undefined,
           startedAt: timeToSeconds(t.time),
+          endedAt:   timeToSeconds(t.endTime) ?? undefined,
         })),
     })
     if (!res.ok) throw new Error(`${res.status}`)
@@ -250,145 +261,151 @@ defineExpose({ openCreate, openEdit, close })
 </script>
 
 <template>
-  <dialog ref="dialogEl">
-    <header>
-      <div class="header-main">
-        <h2>{{ mode === 'create' ? 'new episode' : 'edit episode' }}</h2>
-        <button type="button" class="close-btn" @click="close" aria-label="close">✕</button>
-      </div>
-      <!-- ⋆˙⟡ tabs only visible in edit mode -->
-      <div v-if="mode === 'edit'" class="tabs">
-        <button type="button" :class="{ active: activeTab === 'details' }"
-          @click="activeTab = 'details'">details</button>
-        <button type="button" :class="{ active: activeTab === 'tracklist' }"
-          @click="activeTab = 'tracklist'">tracklist</button>
-      </div>
-    </header>
-
-    <!-- ⊹ ₊ details tab -->
-    <form v-show="activeTab === 'details'" @submit.prevent="submit" novalidate>
-      <div class="fields">
-        <div class="field">
-          <label for="ep-title">title</label>
-          <input id="ep-title" v-model="form.title" :class="{ error: errors.title }" maxlength="200" />
-          <span v-if="errors.title" class="err">{{ errors.title }}</span>
+  <dialog ref="dialogEl" @click.self="close">
+    <TabsRoot v-model="activeTab">
+      <header>
+        <div class="header-main">
+          <h2>{{ mode === 'create' ? 'new episode' : 'edit episode' }}</h2>
+          <button type="button" class="close-btn" @click="close" aria-label="close">✕</button>
         </div>
+        <!-- ⋆˙⟡ reka-ui tabs — only visible in edit mode -->
+        <TabsList v-if="mode === 'edit'" class="tabs">
+          <TabsTrigger value="details">details</TabsTrigger>
+          <TabsTrigger value="tracklist">tracklist</TabsTrigger>
+        </TabsList>
+      </header>
 
-        <div class="field">
-          <label for="ep-type">type</label>
-          <select id="ep-type" v-model="form.type">
-            <option value="recorded">recorded</option>
-            <option value="live">live</option>
-            <option value="playlist">playlist</option>
-            <option value="external">external</option>
-          </select>
-        </div>
+      <!-- ⊹ ₊ details tab -->
+      <TabsContent value="details" as-child>
+        <form @submit.prevent="submit" novalidate>
+          <div class="fields">
+            <div class="field">
+              <label for="ep-title">title</label>
+              <input id="ep-title" v-model="form.title" :class="{ error: errors.title }" maxlength="200" />
+              <span v-if="errors.title" class="err">{{ errors.title }}</span>
+            </div>
 
-        <div class="field">
-          <label for="ep-ref">{{ refLabel[form.type] }}</label>
+            <div class="field">
+              <label for="ep-type">type</label>
+              <select id="ep-type" v-model="form.type">
+                <option value="recorded">recorded</option>
+                <option value="live">live</option>
+                <option value="playlist">playlist</option>
+                <option value="external">external</option>
+              </select>
+            </div>
 
-          <!-- ⊹ ₊ recorded — pick from media library -->
-          <select v-if="form.type === 'recorded'" id="ep-ref" v-model="form.sourceRef"
-            :class="{ error: errors.sourceRef }">
-            <option value="" disabled>select a track…</option>
-            <option v-for="m in media" :key="m.id" :value="m.id">
-              {{ m.title }}{{ m.artist ? ` — ${m.artist}` : '' }}
-            </option>
-          </select>
+            <div class="field">
+              <label>{{ refLabel[form.type] }}</label>
 
-          <!-- ⋆˙⟡ playlist — pick from playlists -->
-          <select v-else-if="form.type === 'playlist'" id="ep-ref" v-model="form.sourceRef"
-            :class="{ error: errors.sourceRef }">
-            <option value="" disabled>select a playlist…</option>
-            <option v-for="pl in playlists" :key="pl.id" :value="pl.id">{{ pl.name }}</option>
-          </select>
+              <!-- ⊹ ₊ recorded — searchable picker with upload -->
+              <MediaPicker
+                v-if="form.type === 'recorded'"
+                v-model="form.sourceRef"
+                :media="media"
+                :class="{ error: errors.sourceRef }"
+                @media-added="onMediaAdded"
+              />
 
-          <!-- live / external — plain text -->
-          <input v-else id="ep-ref" v-model="form.sourceRef" :class="{ error: errors.sourceRef }"
-            :placeholder="form.type === 'live' ? 'e.g. main' : 'https://…'" />
-          <span v-if="errors.sourceRef" class="err">{{ errors.sourceRef }}</span>
-        </div>
+              <!-- ⋆˙⟡ playlist — pick from playlists -->
+              <select v-else-if="form.type === 'playlist'" id="ep-ref" v-model="form.sourceRef"
+                :class="{ error: errors.sourceRef }">
+                <option value="" disabled>select a playlist…</option>
+                <option v-for="pl in playlists" :key="pl.id" :value="pl.id">{{ pl.name }}</option>
+              </select>
 
-        <div class="row">
-          <div class="field">
-            <label for="ep-start">start</label>
-            <input id="ep-start" type="datetime-local" v-model="form.startTime" :class="{ error: errors.startTime }" />
-            <span v-if="errors.startTime" class="err">{{ errors.startTime }}</span>
+              <!-- live / external — plain text -->
+              <input v-else id="ep-ref" v-model="form.sourceRef" :class="{ error: errors.sourceRef }"
+                :placeholder="form.type === 'live' ? 'e.g. main' : 'https://…'" />
+              <span v-if="errors.sourceRef" class="err">{{ errors.sourceRef }}</span>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label for="ep-start">start</label>
+                <input id="ep-start" type="datetime-local" v-model="form.startTime"
+                  :class="{ error: errors.startTime }" />
+                <span v-if="errors.startTime" class="err">{{ errors.startTime }}</span>
+              </div>
+              <div class="field">
+                <label for="ep-end">end</label>
+                <input id="ep-end" type="datetime-local" v-model="form.endTime"
+                  :class="{ error: errors.endTime || errors._form }" />
+                <span v-if="errors.endTime || errors._form" class="err">{{ errors.endTime ?? errors._form }}</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="ep-desc">description</label>
+              <textarea id="ep-desc" v-model="form.description" rows="3" maxlength="2000" />
+            </div>
+
+            <div class="field">
+              <label for="ep-email">
+                contact email
+                <span class="label-hint">for tracklist submission link after show</span>
+              </label>
+              <input id="ep-email" type="email" v-model="form.contactEmail" placeholder="dj@example.com" />
+            </div>
           </div>
-          <div class="field">
-            <label for="ep-end">end</label>
-            <input id="ep-end" type="datetime-local" v-model="form.endTime"
-              :class="{ error: errors.endTime || errors._form }" />
-            <span v-if="errors.endTime || errors._form" class="err">{{ errors.endTime ?? errors._form }}</span>
+
+          <footer>
+            <button v-if="mode === 'edit'" type="button" class="delete-btn" @click="remove">delete</button>
+            <div class="actions">
+              <button type="button" @click="close">cancel</button>
+              <button type="submit" class="primary">{{ mode === 'create' ? 'create' : 'save' }}</button>
+            </div>
+          </footer>
+        </form>
+      </TabsContent>
+
+      <!-- ✮ ⋆ ˚｡𖦹 tracklist tab -->
+      <TabsContent v-if="mode === 'edit'" value="tracklist">
+        <div class="tracklist-panel">
+          <div class="track-content">
+            <div v-if="tracksLoading" class="track-empty">loading…</div>
+            <div v-else-if="tracksError && tracks.length === 0" class="track-empty track-err">{{ tracksError }}</div>
+            <template v-else>
+              <TracklistEditor ref="editorRef" v-model="tracks" :episodeDuration="episodeDuration" />
+              <p v-if="tracksError" class="track-err-msg">{{ tracksError }}</p>
+              <p v-if="tracksSaved" class="track-ok-msg">saved</p>
+            </template>
           </div>
-        </div>
 
-        <div class="field">
-          <label for="ep-desc">description</label>
-          <textarea id="ep-desc" v-model="form.description" rows="3" maxlength="2000" />
+          <footer>
+            <div class="actions">
+              <!-- ⊹ ₊ ⟡ copy link for sharing with the dj -->
+              <button type="button" class="link-btn" :disabled="linkLoading" @click="copySubmissionLink">
+                {{ linkCopied ? 'copied!' : linkLoading ? '…' : 'copy link' }}
+              </button>
+              <button type="button" @click="close">cancel</button>
+              <button type="button" class="primary" :disabled="!canSaveTracks" @click="saveTracks">
+                {{ tracksSaving ? 'saving…' : 'save tracklist' }}
+              </button>
+            </div>
+          </footer>
         </div>
-
-        <div class="field">
-          <label for="ep-email">
-            contact email
-            <span class="label-hint">for tracklist submission link after show</span>
-          </label>
-          <input id="ep-email" type="email" v-model="form.contactEmail" placeholder="dj@example.com" />
-        </div>
-      </div>
-
-      <footer>
-        <button v-if="mode === 'edit'" type="button" class="delete-btn" @click="remove">delete</button>
-        <div class="actions">
-          <button type="button" @click="close">cancel</button>
-          <button type="submit" class="primary">{{ mode === 'create' ? 'create' : 'save' }}</button>
-        </div>
-      </footer>
-    </form>
-
-    <!-- ✮ ⋆ ˚｡𖦹 tracklist tab -->
-    <div v-if="mode === 'edit'" v-show="activeTab === 'tracklist'" class="tracklist-panel">
-      <div class="track-content">
-        <div v-if="tracksLoading" class="track-empty">loading…</div>
-        <div v-else-if="tracksError && tracks.length === 0" class="track-empty track-err">{{ tracksError }}</div>
-        <template v-else>
-          <TracklistEditor ref="editorRef" v-model="tracks" :episodeDuration="episodeDuration" />
-          <p v-if="tracksError" class="track-err-msg">{{ tracksError }}</p>
-          <p v-if="tracksSaved" class="track-ok-msg">saved</p>
-        </template>
-      </div>
-
-      <footer>
-        <div class="actions">
-          <!-- ⊹ ₊ ⟡ copy link for sharing with the dj -->
-          <button type="button" class="link-btn" :disabled="linkLoading" @click="copySubmissionLink">
-            {{ linkCopied ? 'copied!' : linkLoading ? '…' : 'copy link' }}
-          </button>
-          <button type="button" @click="close">cancel</button>
-          <button type="button" class="primary" :disabled="!canSaveTracks" @click="saveTracks">
-            {{ tracksSaving ? 'saving…' : 'save tracklist' }}
-          </button>
-        </div>
-      </footer>
-    </div>
+      </TabsContent>
+    </TabsRoot>
   </dialog>
 </template>
 
 <style scoped>
 dialog {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border: 1px solid var(--border);
   padding: 0;
   width: min(560px, 90vw);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  min-height: 700px;
+  background: var(--background);
+  color: var(--foreground);
 }
 
 dialog::backdrop {
-  background: rgba(0, 0, 0, 0.35);
+  background: oklch(0 0 0 / 0.65);
 }
 
 header {
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--border);
 }
 
 .header-main {
@@ -408,44 +425,44 @@ h2 {
   background: none;
   border: none;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   font-size: 1rem;
   padding: 0.25rem;
   line-height: 1;
 }
 
 .close-btn:hover {
-  color: #111827;
+  color: var(--foreground);
 }
 
-/* ⋆˙⟡ tabs */
+/* ⋆˙⟡ tabs — TabsList gets .tabs class; triggers render internally so need :deep() */
 .tabs {
   display: flex;
   gap: 0;
   padding: 0 1.5rem;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--border);
 }
 
-.tabs button {
+.tabs :deep(button) {
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
   font-weight: 500;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   cursor: pointer;
   font-family: inherit;
   margin-bottom: -1px;
 }
 
-.tabs button:hover {
-  color: #374151;
+.tabs :deep(button:hover) {
+  color: var(--foreground);
 }
 
-.tabs button.active {
-  color: #111827;
-  border-bottom-color: #111827;
+.tabs :deep(button[data-state="active"]) {
+  color: var(--foreground);
+  border-bottom-color: var(--foreground);
 }
 
 /* details form */
@@ -469,7 +486,7 @@ form {
 
 label {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--muted-foreground);
   font-weight: 500;
   display: flex;
   align-items: baseline;
@@ -479,8 +496,9 @@ label {
 
 .label-hint {
   font-size: 0.72rem;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   font-weight: 400;
+  opacity: 0.7;
 }
 
 input,
@@ -488,29 +506,27 @@ select,
 textarea {
   font-size: 0.9rem;
   padding: 0.45rem 0.6rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: 1px solid var(--border);
   outline: none;
   font-family: inherit;
-  color: #111827;
-  background: #fff;
+  color: var(--foreground);
+  background: var(--input);
 }
 
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+  border-color: var(--ring);
 }
 
 input.error,
 select.error {
-  border-color: #dc2626;
+  border-color: var(--destructive);
 }
 
 .err {
   font-size: 0.75rem;
-  color: #dc2626;
+  color: var(--destructive);
 }
 
 textarea {
@@ -528,7 +544,7 @@ footer {
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.5rem;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--border);
 }
 
 .actions {
@@ -539,16 +555,16 @@ footer {
 
 button {
   padding: 0.45rem 1rem;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
   font-size: 0.85rem;
   cursor: pointer;
   font-family: inherit;
 }
 
 button:hover:not(:disabled) {
-  background: #f9fafb;
+  background: var(--muted);
 }
 
 button:disabled {
@@ -557,32 +573,34 @@ button:disabled {
 }
 
 button.primary {
-  background: #111827;
-  color: #fff;
-  border-color: #111827;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
 }
 
 button.primary:hover:not(:disabled) {
-  background: #374151;
+  opacity: 0.85;
+  background: var(--primary);
 }
 
 button.delete-btn {
-  color: #dc2626;
-  border-color: #fca5a5;
+  color: var(--destructive);
+  border-color: var(--destructive);
 }
 
 button.delete-btn:hover {
-  background: #fef2f2;
+  background: color-mix(in oklch, var(--destructive) 10%, transparent);
 }
 
 button.link-btn {
-  color: #6366f1;
-  border-color: #c7d2fe;
+  color: var(--muted-foreground);
+  border-color: var(--border);
   font-size: 0.8rem;
 }
 
 button.link-btn:hover:not(:disabled) {
-  background: #eef2ff;
+  background: var(--muted);
+  color: var(--foreground);
 }
 
 /* ✮⋆‧° tracklist panel */
@@ -599,8 +617,12 @@ button.link-btn:hover:not(:disabled) {
 
 .track-empty {
   font-size: 0.85rem;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   padding: 1rem 0;
+}
+
+.track-err {
+  color: var(--destructive);
 }
 
 .track-table {
@@ -613,9 +635,9 @@ button.link-btn:hover:not(:disabled) {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   padding: 0.3rem 0.25rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border);
 }
 
 .track-table td {
@@ -624,13 +646,13 @@ button.link-btn:hover:not(:disabled) {
 }
 
 .track-table tbody tr:hover {
-  background: #f9fafb;
+  background: var(--muted);
 }
 
 .col-num {
   width: 1.75rem;
   text-align: center;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   font-size: 0.8rem;
 }
 
@@ -651,36 +673,37 @@ button.link-btn:hover:not(:disabled) {
 .track-table input {
   width: 100%;
   padding: 0.3rem 0.4rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
+  border: 1px solid var(--border);
   font-size: 0.85rem;
   font-family: inherit;
-  background: #fff;
+  background: var(--input);
+  color: var(--foreground);
   box-sizing: border-box;
   outline: none;
 }
 
 .track-table input:focus {
-  border-color: #6366f1;
+  border-color: var(--ring);
 }
 
 .track-table input::placeholder {
-  color: #d1d5db;
+  color: var(--muted-foreground);
+  opacity: 0.6;
 }
 
 .btn-icon {
   background: none;
-  border: 1px solid #e5e7eb;
-  border-radius: 3px;
+  border: 1px solid var(--border);
   padding: 0.15rem 0.35rem;
   cursor: pointer;
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--muted-foreground);
   line-height: 1;
 }
 
 .btn-icon:hover:not(:disabled) {
-  background: #f3f4f6;
+  background: var(--muted);
+  color: var(--foreground);
 }
 
 .btn-icon:disabled {
@@ -689,16 +712,15 @@ button.link-btn:hover:not(:disabled) {
 }
 
 .btn-remove:hover:not(:disabled) {
-  background: #fef2f2;
-  color: #dc2626;
-  border-color: #fca5a5;
+  color: var(--destructive);
+  border-color: var(--destructive);
 }
 
 .track-errors {
   margin: 0.5rem 0 0;
   padding-left: 1.1rem;
   font-size: 0.78rem;
-  color: #dc2626;
+  color: var(--destructive);
 }
 
 .track-errors li {
@@ -707,23 +729,23 @@ button.link-btn:hover:not(:disabled) {
 
 .track-err-msg {
   font-size: 0.8rem;
-  color: #dc2626;
+  color: var(--destructive);
   margin: 0.5rem 0 0;
 }
 
 .track-ok-msg {
   font-size: 0.8rem;
-  color: #059669;
+  color: oklch(0.7 0.18 145);
   margin: 0.5rem 0 0;
 }
 
 .add-track-btn {
   font-size: 0.8rem;
-  color: #6b7280;
-  border-color: #e5e7eb;
+  color: var(--muted-foreground);
+  border-color: var(--border);
 }
 
 .add-track-btn:hover {
-  background: #f9fafb;
+  background: var(--muted);
 }
 </style>

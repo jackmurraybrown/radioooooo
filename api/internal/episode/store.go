@@ -15,6 +15,13 @@ const cols = `
 	e.original_start, e.ical_uid, e.ical_feed_id::text,
 	e.auto_filled, e.repeat_of::text, e.contact_email, e.created_at, e.updated_at`
 
+// retCols is cols without the table alias — used in returning clauses ⊹ ₊
+const retCols = `
+	id::text, channel_id::text, show_id::text, title, description, image_ref,
+	color, start_time, end_time, type, source_adapter, source_ref,
+	original_start, ical_uid, ical_feed_id::text,
+	auto_filled, repeat_of::text, contact_email, created_at, updated_at`
+
 type Store struct {
 	db *pgxpool.Pool
 }
@@ -53,7 +60,7 @@ func (s *Store) Create(ctx context.Context, p CreateParams) (Episode, error) {
 		insert into episodes (channel_id, title, description, start_time, end_time, type, source_adapter, source_ref, contact_email)
 		select $1::uuid, $2, $3, $4, $5, $6, $7, $8, $9
 		from channels where id = $1::uuid and station_id = $10::uuid
-		returning`+cols,
+		returning`+retCols,
 		p.ChannelID, p.Title, p.Description, p.StartTime, p.EndTime, p.Type, p.SourceAdapter, p.SourceRef, p.ContactEmail, p.StationID,
 	)
 	if err != nil {

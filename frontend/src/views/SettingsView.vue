@@ -1,42 +1,40 @@
 <script setup lang="ts">
 // ✮⋆‧°—°‧⋆✮ station settings — profile + channels
 import { ref, reactive, watch, onMounted } from 'vue'
+import { useCalendarPrefs } from '@/composables/useCalendarPrefs'
 import * as v from 'valibot'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import { useValidation } from '@/composables/useValidation'
 import type { Station, Channel } from '@/api/types'
 
 const auth = useAuthStore()
 const toast = useToast()
+const { prefs: calPrefs } = useCalendarPrefs()
 
-// ⊹ ࣪ ˖ station profile
+// ⊹ ₊ ⟡ station profile
 const station = ref<Station | null>(null)
 const loading = ref(true)
 const saving = ref(false)
 const fetchError = ref<string | null>(null)
 
 const profileSchema = v.object({
-  name:               v.pipe(v.string(), v.minLength(1, 'required'), v.maxLength(100)),
-  slug:               v.pipe(v.string(), v.minLength(1, 'required'), v.maxLength(50), v.regex(/^[a-z0-9-]+$/, 'lowercase letters, numbers and hyphens only')),
-  logoUrl:            v.optional(v.string()),
+  name: v.pipe(v.string(), v.minLength(1, 'required'), v.maxLength(100)),
+  slug: v.pipe(v.string(), v.minLength(1, 'required'), v.maxLength(50), v.regex(/^[a-z0-9-]+$/, 'lowercase letters, numbers and hyphens only')),
+  logoUrl: v.optional(v.string()),
   tracklistWebhookUrl: v.optional(v.string()),
 })
 
 interface ProfileForm { name: string; slug: string; logoUrl: string; tracklistWebhookUrl: string }
-type ProfileErrors = Partial<Record<keyof ProfileForm, string>>
 
 const form = reactive<ProfileForm>({ name: '', slug: '', logoUrl: '', tracklistWebhookUrl: '' })
-const errors = reactive<ProfileErrors>({})
-
-function clearErrors() {
-  Object.keys(errors).forEach(k => delete (errors as Record<string, string>)[k])
-}
+const { errors, validate } = useValidation(profileSchema)
 
 function populate(st: Station) {
-  form.name               = st.name
-  form.slug               = st.slug
-  form.logoUrl            = st.logoUrl ?? ''
+  form.name = st.name
+  form.slug = st.slug
+  form.logoUrl = st.logoUrl ?? ''
   form.tracklistWebhookUrl = st.tracklistWebhookUrl ?? ''
 }
 
@@ -57,21 +55,13 @@ async function fetchStation() {
 }
 
 async function save() {
-  clearErrors()
-  const result = v.safeParse(profileSchema, { ...form })
-  if (!result.success) {
-    for (const issue of result.issues) {
-      const key = issue.path?.[0]?.key as keyof ProfileForm
-      if (key && !errors[key]) errors[key] = issue.message
-    }
-    return
-  }
+  if (!validate({ ...form })) return
   saving.value = true
   try {
     const res = await api(`/stations/${auth.stationId}`).put({
-      name:               form.name,
-      slug:               form.slug,
-      logoUrl:            form.logoUrl || undefined,
+      name: form.name,
+      slug: form.slug,
+      logoUrl: form.logoUrl || undefined,
       tracklistWebhookUrl: form.tracklistWebhookUrl || undefined,
     })
     if (!res.ok) throw new Error(`${res.status}`)
@@ -98,9 +88,9 @@ const channelSchema = v.object({
 })
 
 const newChannel = reactive({ name: '', slug: '' })
-const newChannelErrors = reactive<{ name?: string; slug?: string }>({})
+const { errors: channelErrors, validate: validateChannel } = useValidation(channelSchema)
 
-// auto-derive slug from name ⋆˙⟡
+// ⋆˙⟡ auto-derive slug from name
 watch(() => newChannel.name, (val) => {
   newChannel.slug = val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 })
@@ -120,15 +110,7 @@ async function fetchChannels() {
 }
 
 async function createChannel() {
-  Object.keys(newChannelErrors).forEach(k => delete (newChannelErrors as Record<string, string>)[k])
-  const result = v.safeParse(channelSchema, { ...newChannel })
-  if (!result.success) {
-    for (const issue of result.issues) {
-      const key = issue.path?.[0]?.key as keyof typeof newChannelErrors
-      if (key && !newChannelErrors[key]) newChannelErrors[key] = issue.message
-    }
-    return
-  }
+  if (!validateChannel({ ...newChannel })) return
   channelCreating.value = true
   try {
     const res = await api('/channels').post({ name: newChannel.name, slug: newChannel.slug })
@@ -241,12 +223,8 @@ onMounted(() => {
           <li v-for="ch in channels" :key="ch.id">
             <span class="ch-name">{{ ch.name }}</span>
             <span class="ch-slug">{{ ch.slug }}</span>
-            <button
-              v-if="channels.length > 1"
-              class="delete-btn"
-              @click="promptDelete(ch.id, ch.name)"
-              aria-label="delete channel"
-            >✕</button>
+            <button v-if="channels.length > 1" class="delete-btn" @click="promptDelete(ch.id, ch.name)"
+              aria-label="delete channel">✕</button>
           </li>
         </ul>
         <p v-else class="empty-inline">no channels yet</p>
@@ -255,28 +233,45 @@ onMounted(() => {
         <form @submit.prevent="createChannel" novalidate class="new-channel-form">
           <div class="new-channel-fields">
             <div class="field">
-              <input
-                v-model="newChannel.name"
-                placeholder="channel name"
-                :class="{ error: newChannelErrors.name }"
-                maxlength="100"
-              />
-              <span v-if="newChannelErrors.name" class="err">{{ newChannelErrors.name }}</span>
+              <input v-model="newChannel.name" placeholder="channel name" :class="{ error: channelErrors.name }"
+                maxlength="100" />
+              <span v-if="channelErrors.name" class="err">{{ channelErrors.name }}</span>
             </div>
             <div class="field">
-              <input
-                v-model="newChannel.slug"
-                placeholder="slug"
-                :class="{ error: newChannelErrors.slug }"
-                maxlength="50"
-              />
-              <span v-if="newChannelErrors.slug" class="err">{{ newChannelErrors.slug }}</span>
+              <input v-model="newChannel.slug" placeholder="slug" :class="{ error: channelErrors.slug }"
+                maxlength="50" />
+              <span v-if="channelErrors.slug" class="err">{{ channelErrors.slug }}</span>
             </div>
           </div>
           <button type="submit" class="primary" :disabled="channelCreating">
             {{ channelCreating ? 'creating…' : 'add channel' }}
           </button>
         </form>
+      </section>
+
+      <!-- calendar display preferences — stored locally -->
+      <section>
+        <h2>calendar</h2>
+        <div class="field">
+          <label>start of week</label>
+          <select v-model.number="calPrefs.firstDay">
+            <option :value="1">monday</option>
+            <option :value="0">sunday</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>scroll to time</label>
+          <input type="time" v-model="calPrefs.scrollTime" step="1800" />
+        </div>
+        <div class="field">
+          <label>slot duration</label>
+          <select v-model="calPrefs.slotDuration">
+            <option value="00:15:00">15 minutes</option>
+            <option value="00:30:00">30 minutes</option>
+            <option value="01:00:00">1 hour</option>
+          </select>
+        </div>
+        <p class="hint">changes apply immediately on the schedule page.</p>
       </section>
     </template>
   </div>
@@ -296,17 +291,22 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  padding: 2rem;
   max-width: 520px;
 }
 
-h1 { font-size: 1.1rem; font-weight: 600; margin: 0; }
+h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
 
 h2 {
   font-size: 0.8rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   margin: 0 0 1rem;
 }
 
@@ -315,41 +315,53 @@ section {
   flex-direction: column;
   gap: 1rem;
   padding: 1.25rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid var(--border);
 }
 
-.field { display: flex; flex-direction: column; gap: 0.3rem; }
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
 
 label {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--muted-foreground);
   font-weight: 500;
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
 }
 
-.label-hint { font-size: 0.73rem; color: #9ca3af; font-weight: 400; }
+.label-hint {
+  font-size: 0.73rem;
+  color: var(--muted-foreground);
+  font-weight: 400;
+  opacity: 0.7;
+}
 
 input {
   font-size: 0.9rem;
   padding: 0.45rem 0.6rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: 1px solid var(--border);
   outline: none;
   font-family: inherit;
-  color: #111827;
-  background: #fff;
+  color: var(--foreground);
+  background: var(--input);
 }
 
 input:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99,102,241,0.15);
+  border-color: var(--ring);
 }
 
-input.error { border-color: #dc2626; }
-.err { font-size: 0.75rem; color: #dc2626; }
+input.error {
+  border-color: var(--destructive);
+}
+
+.err {
+  font-size: 0.75rem;
+  color: var(--destructive);
+}
 
 .logo-row {
   display: flex;
@@ -357,29 +369,30 @@ input.error { border-color: #dc2626; }
   gap: 0.75rem;
 }
 
+/* TODO: support uploading logo directly, not just a url */
 .logo-preview {
   width: 48px;
   height: 48px;
-  border-radius: 8px;
   object-fit: cover;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   flex-shrink: 0;
 }
 
 .logo-placeholder {
   width: 48px;
   height: 48px;
-  border-radius: 8px;
-  border: 1px dashed #d1d5db;
+  border: 1px dashed var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.65rem;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   flex-shrink: 0;
 }
 
-.logo-input { flex: 1; }
+.logo-input {
+  flex: 1;
+}
 
 .form-footer {
   display: flex;
@@ -387,7 +400,7 @@ input.error { border-color: #dc2626; }
   justify-content: flex-end;
 }
 
-/* ⋆˙⟡ channel list */
+/* ⊹ ₊ ⟡ channel list */
 .channel-list {
   list-style: none;
   margin: 0;
@@ -402,33 +415,44 @@ input.error { border-color: #dc2626; }
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 0.6rem;
-  border-radius: 6px;
-  background: #f9fafb;
+  background: var(--muted);
   font-size: 0.88rem;
 }
 
-.ch-name { font-weight: 500; color: #111827; flex: 1; }
-.ch-slug { font-size: 0.78rem; color: #9ca3af; font-family: monospace; }
+.ch-name {
+  font-weight: 500;
+  color: var(--foreground);
+  flex: 1;
+}
+
+.ch-slug {
+  font-size: 0.78rem;
+  color: var(--muted-foreground);
+}
 
 .delete-btn {
   background: none;
   border: none;
   cursor: pointer;
-  color: #d1d5db;
+  color: var(--muted-foreground);
   font-size: 0.75rem;
   padding: 0.15rem;
   line-height: 1;
   flex-shrink: 0;
+  opacity: 0.5;
 }
 
-.delete-btn:hover { color: #dc2626; }
+.delete-btn:hover {
+  color: var(--destructive);
+  opacity: 1;
+}
 
 .new-channel-form {
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
   padding-top: 0.25rem;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--border);
 }
 
 .new-channel-fields {
@@ -437,39 +461,62 @@ input.error { border-color: #dc2626; }
   flex: 1;
 }
 
-.new-channel-fields .field { flex: 1; }
+.new-channel-fields .field {
+  flex: 1;
+}
 
-.empty-inline { font-size: 0.85rem; color: #9ca3af; margin: 0; }
+.empty-inline {
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+  margin: 0;
+}
 
 button.primary {
   padding: 0.45rem 1.25rem;
-  border-radius: 6px;
   border: none;
-  background: #111827;
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-size: 0.85rem;
   cursor: pointer;
   font-family: inherit;
   white-space: nowrap;
 }
 
-button.primary:hover { background: #374151; }
-button.primary:disabled { opacity: 0.5; cursor: default; }
-
-.empty { font-size: 0.9rem; color: #9ca3af; }
-.error-msg { font-size: 0.9rem; color: #dc2626; }
-
-.confirm-dialog {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 1.5rem;
-  width: min(360px, 90vw);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+button.primary:hover {
+  opacity: 0.85;
 }
 
-.confirm-dialog::backdrop { background: rgba(0,0,0,0.35); }
+button.primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 
-.confirm-dialog p { margin: 0 0 1.25rem; font-size: 0.9rem; color: #374151; }
+.empty {
+  font-size: 0.9rem;
+  color: var(--muted-foreground);
+}
+
+.error-msg {
+  font-size: 0.9rem;
+  color: var(--destructive);
+}
+
+.confirm-dialog {
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+  width: min(360px, 90vw);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.confirm-dialog::backdrop {
+  background: oklch(0 0 0 / 0.65);
+}
+
+.confirm-dialog p {
+  margin: 0 0 1.25rem;
+  font-size: 0.9rem;
+}
 
 .confirm-actions {
   display: flex;
@@ -479,14 +526,31 @@ button.primary:disabled { opacity: 0.5; cursor: default; }
 
 button.danger {
   padding: 0.45rem 1.25rem;
-  border-radius: 6px;
   border: none;
-  background: #dc2626;
-  color: #fff;
+  background: var(--destructive);
+  color: var(--foreground);
   font-size: 0.85rem;
   cursor: pointer;
   font-family: inherit;
 }
 
-button.danger:hover { background: #b91c1c; }
+button.danger:hover {
+  opacity: 0.85;
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  margin: 0;
+}
+
+input[type="time"] {
+  border: 1px solid var(--border);
+  background: var(--input);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.5rem;
+  color-scheme: dark;
+}
 </style>

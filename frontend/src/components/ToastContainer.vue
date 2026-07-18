@@ -38,24 +38,24 @@ const { toasts, dismiss } = useToast()
   align-items: center;
   gap: 0.75rem;
   padding: 0.65rem 1rem;
-  border-radius: 8px;
   font-size: 0.875rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
   pointer-events: all;
   max-width: 360px;
   animation: slide-in 0.15s ease;
+  border: 1px solid var(--border);
+  background: var(--muted);
+  color: var(--foreground);
 }
 
+/* ⋆˙⟡ semantic border colors only — no bg fill */
 .toast.error {
-  background: #fef2f2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
+  border-color: var(--destructive);
+  color: var(--destructive);
 }
 
 .toast.success {
-  background: #f0fdf4;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  border-color: oklch(0.45 0.15 145);
+  color: oklch(0.7 0.18 145);
 }
 
 .toast span { flex: 1; }

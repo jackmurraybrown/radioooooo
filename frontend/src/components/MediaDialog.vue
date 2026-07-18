@@ -188,47 +188,38 @@ defineExpose({ openCreate, openEdit, close })
 
 <style scoped>
 dialog {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border: 1px solid var(--border);
   padding: 0;
   width: min(440px, 90vw);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  background: var(--background);
+  color: var(--foreground);
 }
 
-dialog::backdrop {
-  background: rgba(0,0,0,0.35);
-}
+dialog::backdrop { background: oklch(0 0 0 / 0.65); }
 
-form {
-  display: flex;
-  flex-direction: column;
-}
+form { display: flex; flex-direction: column; }
 
 header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 1.25rem 1.5rem 1rem;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--border);
 }
 
-h2 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0;
-}
+h2 { font-size: 1rem; font-weight: 600; margin: 0; }
 
 .close-btn {
   background: none;
   border: none;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   font-size: 1rem;
   padding: 0.25rem;
   line-height: 1;
 }
 
-.close-btn:hover { color: #111827; }
+.close-btn:hover { color: var(--foreground); }
 
 .fields {
   display: flex;
@@ -237,15 +228,11 @@ h2 {
   padding: 1.25rem 1.5rem;
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
+.field { display: flex; flex-direction: column; gap: 0.3rem; }
 
 label {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--muted-foreground);
   font-weight: 500;
 }
 
@@ -253,65 +240,44 @@ input,
 select {
   font-size: 0.9rem;
   padding: 0.45rem 0.6rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: 1px solid var(--border);
   outline: none;
   font-family: inherit;
-  color: #111827;
-  background: #fff;
+  color: var(--foreground);
+  background: var(--input);
 }
 
 input:focus,
-select:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99,102,241,0.15);
-}
+select:focus { border-color: var(--ring); }
 
-input.error { border-color: #dc2626; }
+input.error { border-color: var(--destructive); }
 
-.err {
-  font-size: 0.75rem;
-  color: #dc2626;
-}
+.err { font-size: 0.75rem; color: var(--destructive); }
 
 footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.5rem;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--border);
 }
 
-.actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-left: auto;
-}
+.actions { display: flex; gap: 0.5rem; margin-left: auto; }
 
 button {
   padding: 0.45rem 1rem;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
   font-size: 0.85rem;
   cursor: pointer;
   font-family: inherit;
 }
 
-button:hover { background: #f9fafb; }
+button:hover { background: var(--muted); }
 
-button.primary {
-  background: #111827;
-  color: #fff;
-  border-color: #111827;
-}
-
-button.primary:hover { background: #374151; }
-
-button.delete-btn {
-  color: #dc2626;
-  border-color: #fca5a5;
-}
-
-button.delete-btn:hover { background: #fef2f2; }
+button.primary { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+button.primary:hover { opacity: 0.85; background: var(--primary); }
+button.delete-btn { color: var(--destructive); border-color: var(--destructive); }
+button.delete-btn:hover { background: color-mix(in oklch, var(--destructive) 10%, transparent); }
 </style>
