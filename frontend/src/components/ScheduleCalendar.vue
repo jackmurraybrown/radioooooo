@@ -66,16 +66,16 @@ const calendarOptions = computed<CalendarOptions>(() => ({
   eventContent(info) {
     const type = info.event.extendedProps.type as string
     const wrap = document.createElement('div')
-    wrap.className = 'ep-event'
+    wrap.className = 'flex flex-col h-full px-[3px] py-px relative overflow-hidden min-h-0'
 
     const title = document.createElement('div')
-    title.className = 'ep-title'
+    title.className = 'text-[0.78rem] font-medium leading-[1.3] flex-1 line-clamp-3'
     title.textContent = info.event.title
     wrap.appendChild(title)
 
     if (type && type !== 'live') {
       const badge = document.createElement('span')
-      badge.className = 'ep-type-badge'
+      badge.className = 'absolute bottom-[2px] right-[3px] text-[0.6rem] uppercase tracking-[0.04em] opacity-70 leading-none'
       badge.textContent = type
       wrap.appendChild(badge)
     }
@@ -95,8 +95,9 @@ const calendarOptions = computed<CalendarOptions>(() => ({
 </script>
 
 <template>
-  <div class="cal-wrap">
-    <div class="cal-header-extra">
+  <!-- ⋆˙⟡ "cal-wrap" kept as a bare scoping anchor for the fullcalendar-internals overrides below — those elements are fc's own dom, we can't attach classes to them directly -->
+  <div class="cal-wrap flex-1 min-h-0 overflow-hidden relative pt-4">
+    <div class="absolute top-4 right-0 h-10.25 flex items-center gap-2 pr-3 z-10 pointer-events-none *:pointer-events-auto">
       <slot name="header-right" />
     </div>
     <FullCalendar ref="calendarRef" :options="{ ...calendarOptions, events }" />
@@ -104,32 +105,6 @@ const calendarOptions = computed<CalendarOptions>(() => ({
 </template>
 
 <style scoped>
-.cal-wrap {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  position: relative;
-  padding-top: 1rem;
-}
-
-/* ⊹ ₊ ⟡ overlays right of fc header — sits left of the view buttons */
-.cal-header-extra {
-  position: absolute;
-  top: 1rem;
-  right: 0;
-  height: 41px;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding-right: 0.75rem;
-  z-index: 10;
-  pointer-events: none;
-}
-
-.cal-header-extra > * {
-  pointer-events: auto;
-}
-
 /* ⋆˙⟡ push view buttons left so channel select has room on the right */
 .cal-wrap :deep(.fc-toolbar .fc-toolbar-chunk:last-child) {
   padding-right: 160px;
@@ -159,39 +134,5 @@ const calendarOptions = computed<CalendarOptions>(() => ({
 .cal-wrap :deep(.fc-button-active),
 .cal-wrap :deep(.fc-button-active:hover) {
   color: var(--primary-foreground) !important;
-}
-
-/* ✮ ⋆ ˚｡𖦹 custom event content layout */
-.cal-wrap :deep(.ep-event) {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 1px 3px;
-  position: relative;
-  overflow: hidden;
-  min-height: 0;
-}
-
-.cal-wrap :deep(.ep-title) {
-  font-size: 0.78rem;
-  font-weight: 500;
-  line-height: 1.3;
-  flex: 1;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
-
-/* ⋆˙⟡ type badge — sits bottom-right, small + semi-transparent */
-.cal-wrap :deep(.ep-type-badge) {
-  position: absolute;
-  bottom: 2px;
-  right: 3px;
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.7;
-  line-height: 1;
 }
 </style>

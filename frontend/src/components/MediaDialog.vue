@@ -130,29 +130,45 @@ defineExpose({ openCreate, openEdit, close })
 </script>
 
 <template>
-  <dialog ref="dialogEl">
-    <form @submit.prevent="submit" novalidate>
-      <header>
-        <h2>{{ mode === 'create' ? 'add media' : 'edit media' }}</h2>
-        <button type="button" class="close-btn" @click="close" aria-label="close">✕</button>
+  <dialog ref="dialogEl" class="border border-border p-0 w-[min(440px,90vw)] bg-background text-foreground backdrop:bg-backdrop">
+    <form class="flex flex-col" @submit.prevent="submit" novalidate>
+      <header class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-border">
+        <h2 class="text-base font-semibold m-0 text-foreground normal-case tracking-normal">{{ mode === 'create' ? 'add media' : 'edit media' }}</h2>
+        <button type="button" class="bg-transparent border-0 cursor-pointer text-muted-foreground text-base p-1 leading-none hover:text-foreground" @click="close" aria-label="close">✕</button>
       </header>
 
-      <div class="fields">
-        <div class="field">
-          <label for="m-title">title</label>
-          <input id="m-title" v-model="form.title" :class="{ error: errors.title }" maxlength="200" />
-          <span v-if="errors.title" class="err">{{ errors.title }}</span>
+      <div class="flex flex-col gap-4 px-6 py-5">
+        <div class="flex flex-col gap-[0.3rem]">
+          <label for="m-title" class="text-[0.8rem] text-muted-foreground font-medium">title</label>
+          <input
+            id="m-title"
+            v-model="form.title"
+            maxlength="200"
+            class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border outline-none font-sans text-foreground bg-input focus:border-ring"
+            :class="errors.title ? 'border-destructive' : 'border-border'"
+          />
+          <span v-if="errors.title" class="text-xs text-destructive">{{ errors.title }}</span>
         </div>
 
-        <div class="field">
-          <label for="m-artist">artist</label>
-          <input id="m-artist" v-model="form.artist" :class="{ error: errors.artist }" maxlength="200" />
-          <span v-if="errors.artist" class="err">{{ errors.artist }}</span>
+        <div class="flex flex-col gap-[0.3rem]">
+          <label for="m-artist" class="text-[0.8rem] text-muted-foreground font-medium">artist</label>
+          <input
+            id="m-artist"
+            v-model="form.artist"
+            maxlength="200"
+            class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border outline-none font-sans text-foreground bg-input focus:border-ring"
+            :class="errors.artist ? 'border-destructive' : 'border-border'"
+          />
+          <span v-if="errors.artist" class="text-xs text-destructive">{{ errors.artist }}</span>
         </div>
 
-        <div class="field">
-          <label for="m-format">format</label>
-          <select id="m-format" v-model="form.fileFormat">
+        <div class="flex flex-col gap-[0.3rem]">
+          <label for="m-format" class="text-[0.8rem] text-muted-foreground font-medium">format</label>
+          <select
+            id="m-format"
+            v-model="form.fileFormat"
+            class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border border-border outline-none font-sans text-foreground bg-input focus:border-ring"
+          >
             <option value="">unknown</option>
             <option value="mp3">mp3</option>
             <option value="aac">aac</option>
@@ -161,123 +177,51 @@ defineExpose({ openCreate, openEdit, close })
         </div>
 
         <template v-if="mode === 'create'">
-          <div class="field">
-            <label for="m-adapter">source adapter</label>
-            <input id="m-adapter" v-model="form.sourceAdapter" :class="{ error: errors.sourceAdapter }" placeholder="e.g. url" />
-            <span v-if="errors.sourceAdapter" class="err">{{ errors.sourceAdapter }}</span>
+          <div class="flex flex-col gap-[0.3rem]">
+            <label for="m-adapter" class="text-[0.8rem] text-muted-foreground font-medium">source adapter</label>
+            <input
+              id="m-adapter"
+              v-model="form.sourceAdapter"
+              placeholder="e.g. url"
+              class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border outline-none font-sans text-foreground bg-input focus:border-ring"
+              :class="errors.sourceAdapter ? 'border-destructive' : 'border-border'"
+            />
+            <span v-if="errors.sourceAdapter" class="text-xs text-destructive">{{ errors.sourceAdapter }}</span>
           </div>
 
-          <div class="field">
-            <label for="m-ref">source ref</label>
-            <input id="m-ref" v-model="form.sourceRef" :class="{ error: errors.sourceRef }" placeholder="e.g. https://..." />
-            <span v-if="errors.sourceRef" class="err">{{ errors.sourceRef }}</span>
+          <div class="flex flex-col gap-[0.3rem]">
+            <label for="m-ref" class="text-[0.8rem] text-muted-foreground font-medium">source ref</label>
+            <input
+              id="m-ref"
+              v-model="form.sourceRef"
+              placeholder="e.g. https://..."
+              class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border outline-none font-sans text-foreground bg-input focus:border-ring"
+              :class="errors.sourceRef ? 'border-destructive' : 'border-border'"
+            />
+            <span v-if="errors.sourceRef" class="text-xs text-destructive">{{ errors.sourceRef }}</span>
           </div>
         </template>
       </div>
 
-      <footer>
-        <button v-if="mode === 'edit'" type="button" class="delete-btn" @click="remove">delete</button>
-        <div class="actions">
-          <button type="button" @click="close">cancel</button>
-          <button type="submit" class="primary">{{ mode === 'create' ? 'add' : 'save' }}</button>
+      <footer class="flex items-center justify-between px-6 py-4 border-t border-border">
+        <button
+          v-if="mode === 'edit'"
+          type="button"
+          class="px-4 py-[0.45rem] border border-destructive bg-background text-destructive text-[0.85rem] cursor-pointer font-sans hover:bg-destructive/10"
+          @click="remove"
+        >delete</button>
+        <div class="flex gap-2 ml-auto">
+          <button
+            type="button"
+            class="px-4 py-[0.45rem] border border-border bg-background text-foreground text-[0.85rem] cursor-pointer font-sans hover:bg-muted"
+            @click="close"
+          >cancel</button>
+          <button
+            type="submit"
+            class="px-4 py-[0.45rem] border border-primary bg-primary text-primary-foreground text-[0.85rem] cursor-pointer font-sans hover:opacity-85"
+          >{{ mode === 'create' ? 'add' : 'save' }}</button>
         </div>
       </footer>
     </form>
   </dialog>
 </template>
-
-<style scoped>
-dialog {
-  border: 1px solid var(--border);
-  padding: 0;
-  width: min(440px, 90vw);
-  background: var(--background);
-  color: var(--foreground);
-}
-
-dialog::backdrop { background: oklch(0 0 0 / 0.65); }
-
-form { display: flex; flex-direction: column; }
-
-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.25rem 1.5rem 1rem;
-  border-bottom: 1px solid var(--border);
-}
-
-h2 { font-size: 1rem; font-weight: 600; margin: 0; }
-
-.close-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--muted-foreground);
-  font-size: 1rem;
-  padding: 0.25rem;
-  line-height: 1;
-}
-
-.close-btn:hover { color: var(--foreground); }
-
-.fields {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
-}
-
-.field { display: flex; flex-direction: column; gap: 0.3rem; }
-
-label {
-  font-size: 0.8rem;
-  color: var(--muted-foreground);
-  font-weight: 500;
-}
-
-input,
-select {
-  font-size: 0.9rem;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid var(--border);
-  outline: none;
-  font-family: inherit;
-  color: var(--foreground);
-  background: var(--input);
-}
-
-input:focus,
-select:focus { border-color: var(--ring); }
-
-input.error { border-color: var(--destructive); }
-
-.err { font-size: 0.75rem; color: var(--destructive); }
-
-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--border);
-}
-
-.actions { display: flex; gap: 0.5rem; margin-left: auto; }
-
-button {
-  padding: 0.45rem 1rem;
-  border: 1px solid var(--border);
-  background: var(--background);
-  color: var(--foreground);
-  font-size: 0.85rem;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-button:hover { background: var(--muted); }
-
-button.primary { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
-button.primary:hover { opacity: 0.85; background: var(--primary); }
-button.delete-btn { color: var(--destructive); border-color: var(--destructive); }
-button.delete-btn:hover { background: color-mix(in oklch, var(--destructive) 10%, transparent); }
-</style>

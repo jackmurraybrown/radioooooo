@@ -25,6 +25,15 @@ function formatDuration(seconds?: number | null): string {
   return `${m}:${s}`
 }
 
+// ✶. ݁ ˖ status badge classes — tinted dark bg so it reads without being loud
+function statusClasses(status?: string | null): string {
+  const base = 'text-xs px-2 py-[0.2rem]'
+  if (status === 'ready') return `${base} bg-status-ready-bg text-success`
+  if (status === 'pending') return `${base} bg-status-pending-bg text-status-pending-fg`
+  if (status === 'error') return `${base} bg-status-error-bg text-destructive`
+  return `${base} bg-muted text-muted-foreground`
+}
+
 // ⋆˙⟡ ⋆.˚ column definitions
 const columns: ColumnDef<Media>[] = [
   {
@@ -62,7 +71,7 @@ const columns: ColumnDef<Media>[] = [
     enableSorting: true,
     cell: ({ row }) => h(
       'span',
-      { class: `status ${row.original.downloadStatus ?? ''}`.trim() },
+      { class: statusClasses(row.original.downloadStatus) },
       row.original.downloadStatus ?? '—',
     ),
   },
@@ -71,7 +80,10 @@ const columns: ColumnDef<Media>[] = [
     enableSorting: false,
     cell: ({ row }) => h(
       'button',
-      { class: 'edit-btn', onClick: () => dialogEl.value?.openEdit(row.original) },
+      {
+        class: 'px-[0.6rem] py-1 border border-border bg-transparent text-[0.8rem] cursor-pointer text-muted-foreground font-sans hover:bg-muted hover:text-foreground',
+        onClick: () => dialogEl.value?.openEdit(row.original),
+      },
       'edit',
     ),
   },
@@ -107,27 +119,31 @@ onMounted(fetchMedia)
 </script>
 
 <template>
-  <div class="media-page">
-    <div class="toolbar">
+  <div class="flex flex-col gap-5 p-8">
+    <header class="flex items-center justify-between">
       <h1>media</h1>
-      <button class="primary" @click="dialogEl?.openCreate()">add media</button>
-    </div>
+      <button
+        class="px-4 py-[0.45rem] border-0 bg-primary text-primary-foreground text-[0.85rem] cursor-pointer font-sans hover:opacity-85"
+        @click="dialogEl?.openCreate()"
+      >add media</button>
+    </header>
 
-    <p v-if="error" class="error-msg">{{ error }}</p>
-    <div v-if="loading" class="empty">loading…</div>
+    <p v-if="error" class="text-destructive text-[0.85rem]">{{ error }}</p>
+    <div v-if="loading" class="text-muted-foreground text-[0.9rem] py-8">loading…</div>
 
-    <table v-else-if="media.length > 0">
+    <table v-else-if="media.length > 0" class="w-full border-collapse text-[0.88rem]">
       <thead>
         <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
           <th
             v-for="header in headerGroup.headers"
             :key="header.id"
-            :class="{ sortable: header.column.getCanSort() }"
+            class="text-left px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border whitespace-nowrap select-none"
+            :class="header.column.getCanSort() ? 'cursor-pointer hover:text-foreground' : ''"
             @click="header.column.getToggleSortingHandler()?.($event)"
           >
             <FlexRender :render="header.column.columnDef.header" :props="header.getContext()" />
-            <span v-if="header.column.getIsSorted() === 'asc'" class="sort-icon">↑</span>
-            <span v-else-if="header.column.getIsSorted() === 'desc'" class="sort-icon">↓</span>
+            <span v-if="header.column.getIsSorted() === 'asc'" class="ml-1 opacity-60">↑</span>
+            <span v-else-if="header.column.getIsSorted() === 'desc'" class="ml-1 opacity-60">↓</span>
           </th>
         </tr>
       </thead>
@@ -136,7 +152,8 @@ onMounted(fetchMedia)
           <td
             v-for="cell in row.getVisibleCells()"
             :key="cell.id"
-            :class="{ 'title-cell': cell.column.id === 'title' }"
+            class="px-3 py-[0.65rem] border-b border-border align-middle"
+            :class="cell.column.id === 'title' ? 'font-medium text-foreground' : 'text-muted-foreground'"
           >
             <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
           </td>
@@ -144,7 +161,7 @@ onMounted(fetchMedia)
       </tbody>
     </table>
 
-    <div v-else-if="!loading" class="empty">no media yet — add something to get started</div>
+    <div v-else-if="!loading" class="text-muted-foreground text-[0.9rem] py-8">no media yet — add something to get started</div>
 
     <MediaDialog
       ref="dialogEl"
@@ -154,90 +171,3 @@ onMounted(fetchMedia)
     />
   </div>
 </template>
-
-<style scoped>
-.media-page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  padding: 2rem;
-}
-
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-h1 { font-size: 1.1rem; font-weight: 600; margin: 0; }
-
-button.primary {
-  padding: 0.45rem 1rem;
-  border: none;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  font-size: 0.85rem;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-button.primary:hover { opacity: 0.85; }
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.88rem;
-}
-
-th {
-  text-align: left;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--muted-foreground);
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-  user-select: none;
-}
-
-th.sortable { cursor: pointer; }
-th.sortable:hover { color: var(--foreground); }
-
-.sort-icon { margin-left: 0.25rem; opacity: 0.6; }
-
-td {
-  padding: 0.65rem 0.75rem;
-  border-bottom: 1px solid var(--border);
-  color: var(--muted-foreground);
-  vertical-align: middle;
-}
-
-.title-cell { font-weight: 500; color: var(--foreground); }
-
-/* ✶. ݁ ˖ status badge — tinted dark bg so it reads without being loud */
-:deep(.status) {
-  font-size: 0.75rem;
-  padding: 0.2rem 0.5rem;
-  background: var(--muted);
-  color: var(--muted-foreground);
-}
-
-:deep(.status.ready)   { background: oklch(0.15 0.04 145); color: oklch(0.7 0.18 145); }
-:deep(.status.pending) { background: oklch(0.15 0.04 75);  color: oklch(0.75 0.12 75); }
-:deep(.status.error)   { background: oklch(0.15 0.04 27);  color: var(--destructive); }
-
-:deep(.edit-btn) {
-  padding: 0.25rem 0.6rem;
-  border: 1px solid var(--border);
-  background: transparent;
-  font-size: 0.8rem;
-  cursor: pointer;
-  color: var(--muted-foreground);
-  font-family: inherit;
-}
-
-:deep(.edit-btn:hover) { background: var(--muted); color: var(--foreground); }
-
-.empty { color: var(--muted-foreground); font-size: 0.9rem; padding: 2rem 0; }
-.error-msg { color: var(--destructive); font-size: 0.85rem; }
-</style>

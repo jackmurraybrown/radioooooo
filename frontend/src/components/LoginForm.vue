@@ -14,67 +14,34 @@ const email = ref('')
 const password = ref('')
 </script>
 
-<style scoped>
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  width: 320px;
-}
-
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.8rem;
-  color: var(--muted-foreground);
-}
-
-input {
-  font-size: 0.9rem;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid var(--border);
-  background: var(--input);
-  color: var(--foreground);
-  outline: none;
-  font-family: inherit;
-  width: 100%;
-}
-
-input:focus { border-color: var(--ring); }
-
-p {
-  font-size: 0.85rem;
-  color: var(--destructive);
-  margin: 0;
-}
-
-button {
-  padding: 0.5rem 1rem;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border: none;
-  font-size: 0.9rem;
-  cursor: pointer;
-  font-family: inherit;
-  font-weight: 500;
-}
-
-button:disabled { opacity: 0.5; cursor: default; }
-</style>
-
 <template>
-  <form @submit.prevent="emit('submit', email, password)">
-    <label>
+  <form class="flex flex-col gap-4 w-80" @submit.prevent="emit('submit', email, password)">
+    <label class="flex flex-col gap-[0.3rem] text-[0.8rem] text-muted-foreground">
       email
-      <input v-model="email" type="email" autocomplete="email" required />
+      <input
+        v-model="email"
+        type="email"
+        autocomplete="email"
+        required
+        class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border border-border bg-input text-foreground outline-none font-sans w-full focus:border-ring"
+      />
     </label>
-    <label>
+    <label class="flex flex-col gap-[0.3rem] text-[0.8rem] text-muted-foreground">
       password
-      <input v-model="password" type="password" autocomplete="current-password" required />
+      <input
+        v-model="password"
+        type="password"
+        autocomplete="current-password"
+        required
+        class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border border-border bg-input text-foreground outline-none font-sans w-full focus:border-ring"
+      />
     </label>
-    <p v-if="error">{{ error }}</p>
-    <button type="submit" :disabled="loading">
+    <p v-if="error" class="text-[0.85rem] text-destructive m-0">{{ error }}</p>
+    <button
+      type="submit"
+      :disabled="loading"
+      class="px-4 py-2 bg-primary text-primary-foreground border-0 text-[0.9rem] cursor-pointer font-sans font-medium disabled:opacity-50 disabled:cursor-default"
+    >
       {{ loading ? 'signing in…' : 'sign in' }}
     </button>
   </form>

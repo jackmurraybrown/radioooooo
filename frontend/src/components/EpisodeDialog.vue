@@ -261,33 +261,53 @@ defineExpose({ openCreate, openEdit, close })
 </script>
 
 <template>
-  <dialog ref="dialogEl" @click.self="close">
+  <dialog
+    ref="dialogEl"
+    class="border border-border p-0 w-[min(560px,90vw)] min-h-175 bg-background text-foreground backdrop:bg-backdrop"
+    @click.self="close"
+  >
     <TabsRoot v-model="activeTab">
-      <header>
-        <div class="header-main">
-          <h2>{{ mode === 'create' ? 'new episode' : 'edit episode' }}</h2>
-          <button type="button" class="close-btn" @click="close" aria-label="close">✕</button>
+      <header class="border-b border-border">
+        <div class="flex items-center justify-between px-6 pt-5 pb-4">
+          <h2 class="text-base font-semibold m-0 normal-case tracking-normal text-foreground">{{ mode === 'create' ? 'new episode' : 'edit episode' }}</h2>
+          <button type="button" class="bg-transparent border-0 cursor-pointer text-muted-foreground text-base p-1 leading-none hover:text-foreground" @click="close" aria-label="close">✕</button>
         </div>
-        <!-- ⋆˙⟡ reka-ui tabs — only visible in edit mode -->
-        <TabsList v-if="mode === 'edit'" class="tabs">
-          <TabsTrigger value="details">details</TabsTrigger>
-          <TabsTrigger value="tracklist">tracklist</TabsTrigger>
+        <!-- ⋆˙⟡ reka-ui tabs — classes applied straight to TabsTrigger so they land on the rendered button regardless of scoped-css quirks -->
+        <TabsList v-if="mode === 'edit'" class="flex px-6 border-t border-border">
+          <TabsTrigger
+            value="details"
+            class="bg-transparent border-0 border-b-2 border-transparent px-3 py-2 text-[0.8rem] font-medium text-muted-foreground cursor-pointer font-sans -mb-px hover:text-foreground data-[state=active]:text-foreground data-[state=active]:border-b-foreground"
+          >details</TabsTrigger>
+          <TabsTrigger
+            value="tracklist"
+            class="bg-transparent border-0 border-b-2 border-transparent px-3 py-2 text-[0.8rem] font-medium text-muted-foreground cursor-pointer font-sans -mb-px hover:text-foreground data-[state=active]:text-foreground data-[state=active]:border-b-foreground"
+          >tracklist</TabsTrigger>
         </TabsList>
       </header>
 
       <!-- ⊹ ₊ details tab -->
       <TabsContent value="details" as-child>
-        <form @submit.prevent="submit" novalidate>
-          <div class="fields">
-            <div class="field">
-              <label for="ep-title">title</label>
-              <input id="ep-title" v-model="form.title" :class="{ error: errors.title }" maxlength="200" />
-              <span v-if="errors.title" class="err">{{ errors.title }}</span>
+        <form class="flex flex-col" @submit.prevent="submit" novalidate>
+          <div class="flex flex-col gap-4 px-6 py-5">
+            <div class="flex flex-col gap-[0.3rem]">
+              <label for="ep-title" class="text-[0.8rem] text-muted-foreground font-medium flex items-baseline gap-[0.4rem] flex-wrap">title</label>
+              <input
+                id="ep-title"
+                v-model="form.title"
+                maxlength="200"
+                class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border outline-none font-sans text-foreground bg-input focus:border-ring"
+                :class="errors.title ? 'border-destructive' : 'border-border'"
+              />
+              <span v-if="errors.title" class="text-xs text-destructive">{{ errors.title }}</span>
             </div>
 
-            <div class="field">
-              <label for="ep-type">type</label>
-              <select id="ep-type" v-model="form.type">
+            <div class="flex flex-col gap-[0.3rem]">
+              <label for="ep-type" class="text-[0.8rem] text-muted-foreground font-medium flex items-baseline gap-[0.4rem] flex-wrap">type</label>
+              <select
+                id="ep-type"
+                v-model="form.type"
+                class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border border-border outline-none font-sans text-foreground bg-input focus:border-ring"
+              >
                 <option value="recorded">recorded</option>
                 <option value="live">live</option>
                 <option value="playlist">playlist</option>
@@ -295,65 +315,110 @@ defineExpose({ openCreate, openEdit, close })
               </select>
             </div>
 
-            <div class="field">
-              <label>{{ refLabel[form.type] }}</label>
+            <div class="flex flex-col gap-[0.3rem]">
+              <label class="text-[0.8rem] text-muted-foreground font-medium flex items-baseline gap-[0.4rem] flex-wrap">{{ refLabel[form.type] }}</label>
 
               <!-- ⊹ ₊ recorded — searchable picker with upload -->
               <MediaPicker
                 v-if="form.type === 'recorded'"
                 v-model="form.sourceRef"
                 :media="media"
-                :class="{ error: errors.sourceRef }"
+                :class="errors.sourceRef ? 'border-destructive' : ''"
                 @media-added="onMediaAdded"
               />
 
               <!-- ⋆˙⟡ playlist — pick from playlists -->
-              <select v-else-if="form.type === 'playlist'" id="ep-ref" v-model="form.sourceRef"
-                :class="{ error: errors.sourceRef }">
+              <select
+                v-else-if="form.type === 'playlist'"
+                id="ep-ref"
+                v-model="form.sourceRef"
+                class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border outline-none font-sans text-foreground bg-input focus:border-ring"
+                :class="errors.sourceRef ? 'border-destructive' : 'border-border'"
+              >
                 <option value="" disabled>select a playlist…</option>
                 <option v-for="pl in playlists" :key="pl.id" :value="pl.id">{{ pl.name }}</option>
               </select>
 
               <!-- live / external — plain text -->
-              <input v-else id="ep-ref" v-model="form.sourceRef" :class="{ error: errors.sourceRef }"
-                :placeholder="form.type === 'live' ? 'e.g. main' : 'https://…'" />
-              <span v-if="errors.sourceRef" class="err">{{ errors.sourceRef }}</span>
+              <input
+                v-else
+                id="ep-ref"
+                v-model="form.sourceRef"
+                :placeholder="form.type === 'live' ? 'e.g. main' : 'https://…'"
+                class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border outline-none font-sans text-foreground bg-input focus:border-ring"
+                :class="errors.sourceRef ? 'border-destructive' : 'border-border'"
+              />
+              <span v-if="errors.sourceRef" class="text-xs text-destructive">{{ errors.sourceRef }}</span>
             </div>
 
-            <div class="row">
-              <div class="field">
-                <label for="ep-start">start</label>
-                <input id="ep-start" type="datetime-local" v-model="form.startTime"
-                  :class="{ error: errors.startTime }" />
-                <span v-if="errors.startTime" class="err">{{ errors.startTime }}</span>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="flex flex-col gap-[0.3rem]">
+                <label for="ep-start" class="text-[0.8rem] text-muted-foreground font-medium flex items-baseline gap-[0.4rem] flex-wrap">start</label>
+                <input
+                  id="ep-start"
+                  type="datetime-local"
+                  v-model="form.startTime"
+                  class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border outline-none font-sans text-foreground bg-input focus:border-ring"
+                  :class="errors.startTime ? 'border-destructive' : 'border-border'"
+                />
+                <span v-if="errors.startTime" class="text-xs text-destructive">{{ errors.startTime }}</span>
               </div>
-              <div class="field">
-                <label for="ep-end">end</label>
-                <input id="ep-end" type="datetime-local" v-model="form.endTime"
-                  :class="{ error: errors.endTime || errors._form }" />
-                <span v-if="errors.endTime || errors._form" class="err">{{ errors.endTime ?? errors._form }}</span>
+              <div class="flex flex-col gap-[0.3rem]">
+                <label for="ep-end" class="text-[0.8rem] text-muted-foreground font-medium flex items-baseline gap-[0.4rem] flex-wrap">end</label>
+                <input
+                  id="ep-end"
+                  type="datetime-local"
+                  v-model="form.endTime"
+                  class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border outline-none font-sans text-foreground bg-input focus:border-ring"
+                  :class="(errors.endTime || errors._form) ? 'border-destructive' : 'border-border'"
+                />
+                <span v-if="errors.endTime || errors._form" class="text-xs text-destructive">{{ errors.endTime ?? errors._form }}</span>
               </div>
             </div>
 
-            <div class="field">
-              <label for="ep-desc">description</label>
-              <textarea id="ep-desc" v-model="form.description" rows="3" maxlength="2000" />
+            <div class="flex flex-col gap-[0.3rem]">
+              <label for="ep-desc" class="text-[0.8rem] text-muted-foreground font-medium flex items-baseline gap-[0.4rem] flex-wrap">description</label>
+              <textarea
+                id="ep-desc"
+                v-model="form.description"
+                rows="3"
+                maxlength="2000"
+                class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border border-border outline-none font-sans text-foreground bg-input focus:border-ring resize-y"
+              />
             </div>
 
-            <div class="field">
-              <label for="ep-email">
+            <div class="flex flex-col gap-[0.3rem]">
+              <label for="ep-email" class="text-[0.8rem] text-muted-foreground font-medium flex items-baseline gap-[0.4rem] flex-wrap">
                 contact email
-                <span class="label-hint">for tracklist submission link after show</span>
+                <span class="text-[0.72rem] text-muted-foreground font-normal opacity-70">for tracklist submission link after show</span>
               </label>
-              <input id="ep-email" type="email" v-model="form.contactEmail" placeholder="dj@example.com" />
+              <input
+                id="ep-email"
+                type="email"
+                v-model="form.contactEmail"
+                placeholder="dj@example.com"
+                class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border border-border outline-none font-sans text-foreground bg-input focus:border-ring"
+              />
             </div>
           </div>
 
-          <footer>
-            <button v-if="mode === 'edit'" type="button" class="delete-btn" @click="remove">delete</button>
-            <div class="actions">
-              <button type="button" @click="close">cancel</button>
-              <button type="submit" class="primary">{{ mode === 'create' ? 'create' : 'save' }}</button>
+          <footer class="flex items-center justify-between px-6 py-4 border-t border-border">
+            <button
+              v-if="mode === 'edit'"
+              type="button"
+              class="px-4 py-[0.45rem] border border-destructive bg-background text-destructive text-[0.85rem] cursor-pointer font-sans hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-default"
+              @click="remove"
+            >delete</button>
+            <div class="flex gap-2 ml-auto">
+              <button
+                type="button"
+                class="px-4 py-[0.45rem] border border-border bg-background text-foreground text-[0.85rem] cursor-pointer font-sans hover:bg-muted disabled:opacity-40 disabled:cursor-default"
+                @click="close"
+              >cancel</button>
+              <button
+                type="submit"
+                class="px-4 py-[0.45rem] border border-primary bg-primary text-primary-foreground text-[0.85rem] cursor-pointer font-sans hover:opacity-85 disabled:opacity-40 disabled:cursor-default"
+              >{{ mode === 'create' ? 'create' : 'save' }}</button>
             </div>
           </footer>
         </form>
@@ -361,25 +426,39 @@ defineExpose({ openCreate, openEdit, close })
 
       <!-- ✮ ⋆ ˚｡𖦹 tracklist tab -->
       <TabsContent v-if="mode === 'edit'" value="tracklist">
-        <div class="tracklist-panel">
-          <div class="track-content">
-            <div v-if="tracksLoading" class="track-empty">loading…</div>
-            <div v-else-if="tracksError && tracks.length === 0" class="track-empty track-err">{{ tracksError }}</div>
+        <div class="flex flex-col">
+          <div class="px-6 py-4 overflow-y-auto max-h-85">
+            <div v-if="tracksLoading" class="text-[0.85rem] text-muted-foreground py-4">loading…</div>
+            <div v-else-if="tracksError && tracks.length === 0" class="text-[0.85rem] text-destructive py-4">{{ tracksError }}</div>
             <template v-else>
               <TracklistEditor ref="editorRef" v-model="tracks" :episodeDuration="episodeDuration" />
-              <p v-if="tracksError" class="track-err-msg">{{ tracksError }}</p>
-              <p v-if="tracksSaved" class="track-ok-msg">saved</p>
+              <p v-if="tracksError" class="text-[0.8rem] text-destructive mt-2">{{ tracksError }}</p>
+              <p v-if="tracksSaved" class="text-[0.8rem] text-success mt-2">saved</p>
             </template>
           </div>
 
-          <footer>
-            <div class="actions">
+          <footer class="flex items-center justify-between px-6 py-4 border-t border-border">
+            <div class="flex gap-2 ml-auto">
               <!-- ⊹ ₊ ⟡ copy link for sharing with the dj -->
-              <button type="button" class="link-btn" :disabled="linkLoading" @click="copySubmissionLink">
+              <button
+                type="button"
+                class="px-4 py-[0.45rem] border border-border bg-background text-muted-foreground text-[0.8rem] cursor-pointer font-sans hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-default"
+                :disabled="linkLoading"
+                @click="copySubmissionLink"
+              >
                 {{ linkCopied ? 'copied!' : linkLoading ? '…' : 'copy link' }}
               </button>
-              <button type="button" @click="close">cancel</button>
-              <button type="button" class="primary" :disabled="!canSaveTracks" @click="saveTracks">
+              <button
+                type="button"
+                class="px-4 py-[0.45rem] border border-border bg-background text-foreground text-[0.85rem] cursor-pointer font-sans hover:bg-muted disabled:opacity-40 disabled:cursor-default"
+                @click="close"
+              >cancel</button>
+              <button
+                type="button"
+                class="px-4 py-[0.45rem] border border-primary bg-primary text-primary-foreground text-[0.85rem] cursor-pointer font-sans hover:opacity-85 disabled:opacity-40 disabled:cursor-default"
+                :disabled="!canSaveTracks"
+                @click="saveTracks"
+              >
                 {{ tracksSaving ? 'saving…' : 'save tracklist' }}
               </button>
             </div>
@@ -389,363 +468,3 @@ defineExpose({ openCreate, openEdit, close })
     </TabsRoot>
   </dialog>
 </template>
-
-<style scoped>
-dialog {
-  border: 1px solid var(--border);
-  padding: 0;
-  width: min(560px, 90vw);
-  min-height: 700px;
-  background: var(--background);
-  color: var(--foreground);
-}
-
-dialog::backdrop {
-  background: oklch(0 0 0 / 0.65);
-}
-
-header {
-  border-bottom: 1px solid var(--border);
-}
-
-.header-main {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.25rem 1.5rem 1rem;
-}
-
-h2 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--muted-foreground);
-  font-size: 1rem;
-  padding: 0.25rem;
-  line-height: 1;
-}
-
-.close-btn:hover {
-  color: var(--foreground);
-}
-
-/* ⋆˙⟡ tabs — TabsList gets .tabs class; triggers render internally so need :deep() */
-.tabs {
-  display: flex;
-  gap: 0;
-  padding: 0 1.5rem;
-  border-top: 1px solid var(--border);
-}
-
-.tabs :deep(button) {
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  font-family: inherit;
-  margin-bottom: -1px;
-}
-
-.tabs :deep(button:hover) {
-  color: var(--foreground);
-}
-
-.tabs :deep(button[data-state="active"]) {
-  color: var(--foreground);
-  border-bottom-color: var(--foreground);
-}
-
-/* details form */
-form {
-  display: flex;
-  flex-direction: column;
-}
-
-.fields {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-label {
-  font-size: 0.8rem;
-  color: var(--muted-foreground);
-  font-weight: 500;
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-.label-hint {
-  font-size: 0.72rem;
-  color: var(--muted-foreground);
-  font-weight: 400;
-  opacity: 0.7;
-}
-
-input,
-select,
-textarea {
-  font-size: 0.9rem;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid var(--border);
-  outline: none;
-  font-family: inherit;
-  color: var(--foreground);
-  background: var(--input);
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  border-color: var(--ring);
-}
-
-input.error,
-select.error {
-  border-color: var(--destructive);
-}
-
-.err {
-  font-size: 0.75rem;
-  color: var(--destructive);
-}
-
-textarea {
-  resize: vertical;
-}
-
-.row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-}
-
-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--border);
-}
-
-.actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-left: auto;
-}
-
-button {
-  padding: 0.45rem 1rem;
-  border: 1px solid var(--border);
-  background: var(--background);
-  color: var(--foreground);
-  font-size: 0.85rem;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-button:hover:not(:disabled) {
-  background: var(--muted);
-}
-
-button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-button.primary {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border-color: var(--primary);
-}
-
-button.primary:hover:not(:disabled) {
-  opacity: 0.85;
-  background: var(--primary);
-}
-
-button.delete-btn {
-  color: var(--destructive);
-  border-color: var(--destructive);
-}
-
-button.delete-btn:hover {
-  background: color-mix(in oklch, var(--destructive) 10%, transparent);
-}
-
-button.link-btn {
-  color: var(--muted-foreground);
-  border-color: var(--border);
-  font-size: 0.8rem;
-}
-
-button.link-btn:hover:not(:disabled) {
-  background: var(--muted);
-  color: var(--foreground);
-}
-
-/* ✮⋆‧° tracklist panel */
-.tracklist-panel {
-  display: flex;
-  flex-direction: column;
-}
-
-.track-content {
-  padding: 1rem 1.5rem;
-  overflow-y: auto;
-  max-height: 340px;
-}
-
-.track-empty {
-  font-size: 0.85rem;
-  color: var(--muted-foreground);
-  padding: 1rem 0;
-}
-
-.track-err {
-  color: var(--destructive);
-}
-
-.track-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.track-table th {
-  text-align: left;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted-foreground);
-  padding: 0.3rem 0.25rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.track-table td {
-  padding: 0.2rem 0.25rem;
-  vertical-align: middle;
-}
-
-.track-table tbody tr:hover {
-  background: var(--muted);
-}
-
-.col-num {
-  width: 1.75rem;
-  text-align: center;
-  color: var(--muted-foreground);
-  font-size: 0.8rem;
-}
-
-.col-time {
-  width: 5rem;
-}
-
-.col-time input {
-  text-align: center;
-}
-
-.col-actions {
-  width: 5rem;
-  white-space: nowrap;
-  text-align: right;
-}
-
-.track-table input {
-  width: 100%;
-  padding: 0.3rem 0.4rem;
-  border: 1px solid var(--border);
-  font-size: 0.85rem;
-  font-family: inherit;
-  background: var(--input);
-  color: var(--foreground);
-  box-sizing: border-box;
-  outline: none;
-}
-
-.track-table input:focus {
-  border-color: var(--ring);
-}
-
-.track-table input::placeholder {
-  color: var(--muted-foreground);
-  opacity: 0.6;
-}
-
-.btn-icon {
-  background: none;
-  border: 1px solid var(--border);
-  padding: 0.15rem 0.35rem;
-  cursor: pointer;
-  font-size: 0.8rem;
-  color: var(--muted-foreground);
-  line-height: 1;
-}
-
-.btn-icon:hover:not(:disabled) {
-  background: var(--muted);
-  color: var(--foreground);
-}
-
-.btn-icon:disabled {
-  opacity: 0.25;
-  cursor: default;
-}
-
-.btn-remove:hover:not(:disabled) {
-  color: var(--destructive);
-  border-color: var(--destructive);
-}
-
-.track-errors {
-  margin: 0.5rem 0 0;
-  padding-left: 1.1rem;
-  font-size: 0.78rem;
-  color: var(--destructive);
-}
-
-.track-errors li {
-  margin-bottom: 0.15rem;
-}
-
-.track-err-msg {
-  font-size: 0.8rem;
-  color: var(--destructive);
-  margin: 0.5rem 0 0;
-}
-
-.track-ok-msg {
-  font-size: 0.8rem;
-  color: oklch(0.7 0.18 145);
-  margin: 0.5rem 0 0;
-}
-
-.add-track-btn {
-  font-size: 0.8rem;
-  color: var(--muted-foreground);
-  border-color: var(--border);
-}
-
-.add-track-btn:hover {
-  background: var(--muted);
-}
-</style>

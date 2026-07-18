@@ -23,6 +23,15 @@
   --color-primary: var(--primary);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-success-border: var(--success-border);
+  --color-status-pending-bg: var(--status-pending-bg);
+  --color-status-pending-fg: var(--status-pending-fg);
+  --color-status-ready-bg: var(--status-ready-bg);
+  --color-status-error-bg: var(--status-error-bg);
+  --color-sidebar-background: var(--sidebar-background);
+  --color-backdrop: var(--backdrop);
   --radius-sm: 0px;
   --radius-md: 0px;
   --radius-lg: 0px;
@@ -42,6 +51,17 @@
   --primary: oklch(0.94 0 0);
   --primary-foreground: oklch(0.06 0 0);
   --destructive: oklch(0.65 0.22 27);
+
+  /* ⊹ ₊ ⟡ one-off accent + status colors — pulled out of arbitrary tailwind values so classes stay clean */
+  --accent: oklch(0.72 0.18 250);
+  --success: oklch(0.7 0.18 145);
+  --success-border: oklch(0.45 0.15 145);
+  --status-pending-bg: oklch(0.15 0.04 75);
+  --status-pending-fg: oklch(0.75 0.12 75);
+  --status-ready-bg: oklch(0.15 0.04 145);
+  --status-error-bg: oklch(0.15 0.04 27);
+  --sidebar-background: oklch(0.04 0 0);
+  --backdrop: oklch(0 0 0 / 0.65);
 
   /* ⊹ ₊ ⟡ fullcalendar dark overrides */
   --fc-border-color: var(--border);
