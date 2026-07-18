@@ -7,73 +7,27 @@ const { toasts, dismiss } = useToast()
 
 <template>
   <Teleport to="body">
-    <div class="toast-container" aria-live="polite">
+    <div class="fixed bottom-6 right-6 flex flex-col gap-2 z-1000 pointer-events-none" aria-live="polite">
+      <!-- ⋆˙⟡ semantic border colors only — no bg fill -->
       <div
         v-for="toast in toasts"
         :key="toast.id"
-        class="toast"
-        :class="toast.type"
+        class="flex items-center gap-3 px-4 py-[0.65rem] text-sm pointer-events-auto max-w-90 border bg-muted text-foreground animate-[slide-in_0.15s_ease]"
+        :class="toast.type === 'error' ? 'border-destructive text-destructive' : toast.type === 'success' ? 'border-[oklch(0.45_0.15_145)] text-[oklch(0.7_0.18_145)]' : 'border-border'"
       >
-        <span>{{ toast.message }}</span>
-        <button @click="dismiss(toast.id)" aria-label="dismiss">✕</button>
+        <span class="flex-1">{{ toast.message }}</span>
+        <button
+          class="bg-transparent border-0 cursor-pointer text-inherit opacity-60 text-[0.8rem] p-0 leading-none shrink-0 hover:opacity-100"
+          @click="dismiss(toast.id)"
+          aria-label="dismiss"
+        >✕</button>
       </div>
     </div>
   </Teleport>
 </template>
 
 <style scoped>
-.toast-container {
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  z-index: 1000;
-  pointer-events: none;
-}
-
-.toast {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 1rem;
-  font-size: 0.875rem;
-  pointer-events: all;
-  max-width: 360px;
-  animation: slide-in 0.15s ease;
-  border: 1px solid var(--border);
-  background: var(--muted);
-  color: var(--foreground);
-}
-
-/* ⋆˙⟡ semantic border colors only — no bg fill */
-.toast.error {
-  border-color: var(--destructive);
-  color: var(--destructive);
-}
-
-.toast.success {
-  border-color: oklch(0.45 0.15 145);
-  color: oklch(0.7 0.18 145);
-}
-
-.toast span { flex: 1; }
-
-.toast button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: inherit;
-  opacity: 0.6;
-  font-size: 0.8rem;
-  padding: 0;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.toast button:hover { opacity: 1; }
-
+/* ⋆˙⟡ tailwind can't author keyframes — kept minimal, referenced via arbitrary [animation:] above */
 @keyframes slide-in {
   from { opacity: 0; transform: translateX(0.5rem); }
   to   { opacity: 1; transform: translateX(0); }

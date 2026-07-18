@@ -39,103 +39,28 @@ onMounted(loadStation)
 </script>
 
 <template>
-  <nav class="sidebar">
-    <RouterLink to="/settings" class="brand">
-      <img v-if="logoUrl" :src="logoUrl" :alt="stationName" class="brand-logo" />
-      <span v-else class="brand-name">{{ stationName || 'radiooo' }}</span>
+  <!-- ⊹ ࣪ ˖ TODO: add --sidebar-background to design tokens, hardcoded oklch for now -->
+  <nav class="w-[180px] h-screen flex flex-col py-5 border-r border-border bg-[oklch(0.04_0_0)] shrink-0">
+    <RouterLink to="/settings" class="flex items-center px-4 pb-6 no-underline min-h-[40px] border-b border-border mb-3">
+      <img v-if="logoUrl" :src="logoUrl" :alt="stationName" class="w-8 h-8 object-cover" />
+      <span v-else class="text-[0.85rem] font-semibold text-foreground tracking-[0.05em] lowercase">{{ stationName || 'radiooo' }}</span>
     </RouterLink>
 
-    <ul>
+    <ul class="list-none m-0 p-0 flex flex-col">
       <li v-for="link in links" :key="link.name">
-        <RouterLink :to="link.to" :class="{ active: route.name === link.name }">
+        <RouterLink
+          :to="link.to"
+          class="block px-4 py-[0.45rem] no-underline text-[0.8rem] border-l-2 border-transparent transition-colors duration-100"
+          :class="route.name === link.name ? 'text-foreground border-l-foreground' : 'text-muted-foreground hover:text-foreground'"
+        >
           {{ link.label }}
         </RouterLink>
       </li>
     </ul>
 
-    <button class="logout-btn" @click="logout">logout</button>
+    <button
+      class="mt-auto block w-full px-4 py-[0.45rem] text-left bg-transparent border-0 border-t border-border text-muted-foreground text-[0.8rem] cursor-pointer hover:text-foreground"
+      @click="logout"
+    >logout</button>
   </nav>
 </template>
-
-<style scoped>
-.sidebar {
-  width: 180px;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  padding: 1.25rem 0;
-  border-right: 1px solid var(--border);
-  /* TODO: add --sidebar-background to design tokens */
-  background: oklch(0.04 0 0);
-  flex-shrink: 0;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  padding: 0 1rem 1.5rem;
-  text-decoration: none;
-  min-height: 40px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 0.75rem;
-}
-
-.brand-logo {
-  width: 32px;
-  height: 32px;
-  object-fit: cover;
-}
-
-.brand-name {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--foreground);
-  letter-spacing: 0.05em;
-  text-transform: lowercase;
-}
-
-ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-a {
-  display: block;
-  padding: 0.45rem 1rem;
-  text-decoration: none;
-  color: var(--muted-foreground);
-  font-size: 0.8rem;
-  border-left: 2px solid transparent;
-  transition: color 0.1s;
-}
-
-a:hover {
-  color: var(--foreground);
-}
-
-a.active {
-  color: var(--foreground);
-  border-left-color: var(--foreground);
-}
-
-.logout-btn {
-  margin-top: auto;
-  display: block;
-  width: 100%;
-  padding: 0.45rem 1rem;
-  text-align: left;
-  background: none;
-  border: none;
-  border-top: 1px solid var(--border);
-  color: var(--muted-foreground);
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.logout-btn:hover {
-  color: var(--foreground);
-}
-</style>

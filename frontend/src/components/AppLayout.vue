@@ -5,25 +5,11 @@ import ToastContainer from './ToastContainer.vue'
 </script>
 
 <template>
-  <div class="layout">
+  <div class="flex h-screen overflow-hidden bg-background">
     <AppSidebar />
-    <main class="content">
+    <main class="flex-1 overflow-y-auto">
       <RouterView />
     </main>
     <ToastContainer />
   </div>
 </template>
-
-<style scoped>
-.layout {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
-  background: var(--background);
-}
-
-.content {
-  flex: 1;
-  overflow-y: auto;
-}
-</style>

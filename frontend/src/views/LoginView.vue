@@ -28,17 +28,7 @@ async function onLogin(email: string, password: string) {
 </script>
 
 <template>
-  <main>
+  <main class="min-h-screen flex items-center justify-center bg-background">
     <LoginForm :error="error" :loading="loading" @submit="onLogin" />
   </main>
 </template>
-
-<style scoped>
-main {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--background);
-}
-</style>
