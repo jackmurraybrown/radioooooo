@@ -71,7 +71,7 @@ onMounted(loadChannels)
 </script>
 
 <template>
-  <div class="schedule-page">
+  <div class="h-full flex flex-col overflow-hidden">
     <ScheduleCalendar
       :events="events"
       @date-select="onDateSelect"
@@ -79,17 +79,17 @@ onMounted(loadChannels)
       @event-drop="onEventDrop"
     >
       <template #header-right>
-        <span class="channel-label">channel</span>
+        <span class="text-[0.8rem] text-muted-foreground">channel</span>
         <select
           v-if="channels.length > 1"
           v-model="activeChannelId"
-          class="channel-select"
+          class="text-[0.8rem] px-[0.4rem] py-[0.2rem] border border-border bg-input text-foreground font-sans cursor-pointer outline-none focus:border-ring"
         >
           <option v-for="ch in channels" :key="ch.id" :value="ch.id">
             {{ ch.name }}
           </option>
         </select>
-        <span v-else-if="channels.length === 1" class="channel-name">
+        <span v-else-if="channels.length === 1" class="text-[0.8rem] text-foreground">
           {{ channels[0].name }}
         </span>
       </template>
@@ -103,35 +103,3 @@ onMounted(loadChannels)
     />
   </div>
 </template>
-
-<style scoped>
-.schedule-page {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
-
-.channel-label {
-  font-size: 0.8rem;
-  color: var(--muted-foreground);
-}
-
-.channel-select {
-  font-size: 0.8rem;
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--border);
-  background: var(--input);
-  color: var(--foreground);
-  font-family: inherit;
-  cursor: pointer;
-  outline: none;
-}
-
-.channel-select:focus { border-color: var(--ring); }
-
-.channel-name {
-  font-size: 0.8rem;
-  color: var(--foreground);
-}
-</style>

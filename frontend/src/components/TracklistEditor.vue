@@ -77,136 +77,63 @@ defineExpose({ isValid, validationErrors, timeToSeconds })
 </script>
 
 <template>
-  <div class="tracklist-editor">
-    <table class="track-table">
+  <div class="flex flex-col gap-2">
+    <table class="w-full border-collapse">
       <thead>
         <tr>
-          <th class="col-num">#</th>
-          <th class="col-title">title</th>
-          <th class="col-artist">artist</th>
-          <th class="col-time">start</th>
-          <th class="col-time">end</th>
-          <th class="col-actions"></th>
+          <th class="w-7 text-center text-[0.72rem] uppercase tracking-wider text-muted-foreground px-1 py-[0.3rem] border-b border-border">#</th>
+          <th class="text-left text-[0.72rem] uppercase tracking-wider text-muted-foreground px-1 py-[0.3rem] border-b border-border">title</th>
+          <th class="text-left text-[0.72rem] uppercase tracking-wider text-muted-foreground px-1 py-[0.3rem] border-b border-border">artist</th>
+          <th class="w-20 text-left text-[0.72rem] uppercase tracking-wider text-muted-foreground px-1 py-[0.3rem] border-b border-border">start</th>
+          <th class="w-20 text-left text-[0.72rem] uppercase tracking-wider text-muted-foreground px-1 py-[0.3rem] border-b border-border">end</th>
+          <th class="w-20 text-left text-[0.72rem] uppercase tracking-wider text-muted-foreground px-1 py-[0.3rem] border-b border-border"></th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(track, i) in tracks" :key="i">
-          <td class="col-num">{{ i + 1 }}</td>
-          <td class="col-title">
-            <input v-model="track.title" placeholder="title" />
+        <tr v-for="(track, i) in tracks" :key="i" class="hover:bg-muted">
+          <td class="w-7 text-center text-muted-foreground text-[0.8rem] px-1 py-[0.2rem] align-middle">{{ i + 1 }}</td>
+          <td class="px-1 py-[0.2rem] align-middle">
+            <input v-model="track.title" placeholder="title" class="w-full px-[0.4rem] py-[0.3rem] border border-border text-[0.85rem] font-sans bg-input text-foreground box-border outline-none focus:border-ring placeholder:text-muted-foreground placeholder:opacity-60" />
           </td>
-          <td class="col-artist">
-            <input v-model="track.artist" placeholder="artist" />
+          <td class="px-1 py-[0.2rem] align-middle">
+            <input v-model="track.artist" placeholder="artist" class="w-full px-[0.4rem] py-[0.3rem] border border-border text-[0.85rem] font-sans bg-input text-foreground box-border outline-none focus:border-ring placeholder:text-muted-foreground placeholder:opacity-60" />
           </td>
-          <td class="col-time">
-            <input v-model="track.time" placeholder="mm:ss" />
+          <td class="w-20 px-1 py-[0.2rem] align-middle">
+            <input v-model="track.time" placeholder="mm:ss" class="w-full px-[0.4rem] py-[0.3rem] border border-border text-[0.85rem] font-sans bg-input text-foreground box-border outline-none focus:border-ring placeholder:text-muted-foreground placeholder:opacity-60 text-center" />
           </td>
-          <td class="col-time">
-            <input v-model="track.endTime" placeholder="mm:ss" />
+          <td class="w-20 px-1 py-[0.2rem] align-middle">
+            <input v-model="track.endTime" placeholder="mm:ss" class="w-full px-[0.4rem] py-[0.3rem] border border-border text-[0.85rem] font-sans bg-input text-foreground box-border outline-none focus:border-ring placeholder:text-muted-foreground placeholder:opacity-60 text-center" />
           </td>
-          <td class="col-actions">
-            <button type="button" @click="moveUp(i)"   :disabled="i === 0"                   class="btn-icon">↑</button>
-            <button type="button" @click="moveDown(i)" :disabled="i === tracks.length - 1"   class="btn-icon">↓</button>
-            <button type="button" @click="removeTrack(i)"                                     class="btn-icon btn-remove">×</button>
+          <td class="w-20 whitespace-nowrap text-right px-1 py-[0.2rem] align-middle">
+            <button
+              type="button"
+              @click="moveUp(i)"
+              :disabled="i === 0"
+              class="bg-transparent border border-border px-[0.35rem] py-[0.15rem] cursor-pointer text-[0.8rem] text-muted-foreground leading-none hover:not-disabled:bg-muted hover:not-disabled:text-foreground disabled:opacity-25 disabled:cursor-default"
+            >↑</button>
+            <button
+              type="button"
+              @click="moveDown(i)"
+              :disabled="i === tracks.length - 1"
+              class="bg-transparent border border-border px-[0.35rem] py-[0.15rem] cursor-pointer text-[0.8rem] text-muted-foreground leading-none hover:not-disabled:bg-muted hover:not-disabled:text-foreground disabled:opacity-25 disabled:cursor-default"
+            >↓</button>
+            <button
+              type="button"
+              @click="removeTrack(i)"
+              class="bg-transparent border border-border px-[0.35rem] py-[0.15rem] cursor-pointer text-[0.8rem] text-muted-foreground leading-none hover:not-disabled:bg-muted hover:not-disabled:text-destructive hover:not-disabled:border-destructive disabled:opacity-25 disabled:cursor-default"
+            >×</button>
           </td>
         </tr>
       </tbody>
     </table>
 
-    <div class="editor-footer">
-      <button type="button" @click="addTrack" class="add-btn">+ add track</button>
+    <div class="flex">
+      <button type="button" @click="addTrack" class="px-3 py-[0.35rem] border border-border bg-background text-[0.8rem] text-muted-foreground cursor-pointer font-sans hover:bg-muted hover:text-foreground">+ add track</button>
     </div>
 
     <!-- ⋆˙⟡ ⋆.˚ validation -->
-    <ul v-if="validationErrors.length" class="errors">
-      <li v-for="err in validationErrors" :key="err">{{ err }}</li>
+    <ul v-if="validationErrors.length" class="m-0 pl-[1.1rem] text-[0.78rem] text-destructive">
+      <li v-for="err in validationErrors" :key="err" class="mb-[0.15rem]">{{ err }}</li>
     </ul>
   </div>
 </template>
-
-<style scoped>
-.tracklist-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.track-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.track-table th {
-  text-align: left;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted-foreground);
-  padding: 0.3rem 0.25rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.track-table td {
-  padding: 0.2rem 0.25rem;
-  vertical-align: middle;
-}
-
-.track-table tbody tr:hover { background: var(--muted); }
-
-.col-num    { width: 1.75rem; text-align: center; color: var(--muted-foreground); font-size: 0.8rem; }
-.col-time   { width: 5rem; }
-.col-time input { text-align: center; }
-.col-actions { width: 5rem; white-space: nowrap; text-align: right; }
-
-.track-table input {
-  width: 100%;
-  padding: 0.3rem 0.4rem;
-  border: 1px solid var(--border);
-  font-size: 0.85rem;
-  font-family: inherit;
-  background: var(--input);
-  color: var(--foreground);
-  box-sizing: border-box;
-  outline: none;
-}
-
-.track-table input:focus { border-color: var(--ring); }
-.track-table input::placeholder { color: var(--muted-foreground); opacity: 0.6; }
-
-.btn-icon {
-  background: none;
-  border: 1px solid var(--border);
-  padding: 0.15rem 0.35rem;
-  cursor: pointer;
-  font-size: 0.8rem;
-  color: var(--muted-foreground);
-  line-height: 1;
-}
-
-.btn-icon:hover:not(:disabled) { background: var(--muted); color: var(--foreground); }
-.btn-icon:disabled { opacity: 0.25; cursor: default; }
-.btn-remove:hover:not(:disabled) { color: var(--destructive); border-color: var(--destructive); }
-
-.editor-footer { display: flex; }
-
-.add-btn {
-  padding: 0.35rem 0.75rem;
-  border: 1px solid var(--border);
-  background: var(--background);
-  font-size: 0.8rem;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.add-btn:hover { background: var(--muted); color: var(--foreground); }
-
-.errors {
-  margin: 0;
-  padding-left: 1.1rem;
-  font-size: 0.78rem;
-  color: var(--destructive);
-}
-
-.errors li { margin-bottom: 0.15rem; }
-</style>

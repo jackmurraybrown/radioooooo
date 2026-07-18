@@ -90,87 +90,33 @@ function formatTime(iso: string) {
 </script>
 
 <template>
-  <div class="tracklist-page">
-    <div v-if="loading" class="status">loading...</div>
+  <div class="max-w-180 my-8 mx-auto px-4 text-foreground">
+    <div v-if="loading" class="text-center py-12 text-muted-foreground">loading...</div>
 
-    <div v-else-if="error && !episode" class="status status-err">
+    <div v-else-if="error && !episode" class="text-center py-12 text-destructive">
       <p>{{ error }}</p>
     </div>
 
     <div v-else-if="episode">
-      <header class="episode-header">
-        <h1>{{ episode.title }}</h1>
-        <p class="episode-time">{{ formatTime(episode.startTime) }} — {{ formatTime(episode.endTime) }}</p>
+      <header class="mb-6">
+        <h1 class="text-[1.4rem] mb-1">{{ episode.title }}</h1>
+        <p class="text-muted-foreground text-[0.85rem]">{{ formatTime(episode.startTime) }} — {{ formatTime(episode.endTime) }}</p>
       </header>
 
       <TracklistEditor ref="editorRef" v-model="tracks" :episodeDuration="episodeDuration" />
 
-      <div class="actions">
-        <button @click="save" :disabled="!canSave" class="btn btn-primary">
+      <div class="flex justify-end mt-4">
+        <button
+          @click="save"
+          :disabled="!canSave"
+          class="px-5 py-2 border border-primary bg-primary text-primary-foreground cursor-pointer text-[0.85rem] font-sans hover:opacity-85 disabled:opacity-40 disabled:cursor-default"
+        >
           {{ saving ? 'saving...' : 'save tracklist' }}
         </button>
       </div>
 
-      <p v-if="saved"  class="msg-ok">saved</p>
-      <p v-if="error"  class="msg-err">{{ error }}</p>
+      <p v-if="saved" class="text-[oklch(0.7_0.18_145)] mt-3 text-[0.85rem]">saved</p>
+      <p v-if="error" class="text-destructive mt-3 text-[0.85rem]">{{ error }}</p>
     </div>
   </div>
 </template>
-
-<style scoped>
-.tracklist-page {
-  max-width: 720px;
-  margin: 2rem auto;
-  padding: 0 1rem;
-  color: var(--foreground);
-}
-
-.status {
-  text-align: center;
-  padding: 3rem 0;
-  color: var(--muted-foreground);
-}
-
-.status-err { color: var(--destructive); }
-
-.episode-header { margin-bottom: 1.5rem; }
-
-.episode-header h1 {
-  font-size: 1.4rem;
-  margin: 0 0 0.25rem;
-}
-
-.episode-time {
-  color: var(--muted-foreground);
-  font-size: 0.85rem;
-  margin: 0;
-}
-
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 1rem;
-}
-
-.btn {
-  padding: 0.5rem 1.25rem;
-  border: 1px solid var(--border);
-  background: var(--background);
-  color: var(--foreground);
-  cursor: pointer;
-  font-size: 0.85rem;
-  font-family: inherit;
-}
-
-.btn-primary {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border-color: var(--primary);
-}
-
-.btn-primary:hover:not(:disabled) { opacity: 0.85; }
-.btn:disabled { opacity: 0.4; cursor: default; }
-
-.msg-ok  { color: oklch(0.7 0.18 145); margin-top: 0.75rem; font-size: 0.85rem; }
-.msg-err { color: var(--destructive); margin-top: 0.75rem; font-size: 0.85rem; }
-</style>

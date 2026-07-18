@@ -77,146 +77,45 @@ defineExpose({ openCreate, openEdit, close })
 </script>
 
 <template>
-  <dialog ref="dialogEl">
-    <form @submit.prevent="submit" novalidate>
-      <header>
-        <h2>{{ mode === 'create' ? 'new playlist' : 'edit playlist' }}</h2>
-        <button type="button" class="close-btn" @click="close" aria-label="close">✕</button>
+  <dialog ref="dialogEl" class="border border-border p-0 w-[min(380px,90vw)] bg-background text-foreground backdrop:bg-[oklch(0_0_0/0.65)]">
+    <form class="flex flex-col" @submit.prevent="submit" novalidate>
+      <header class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-border">
+        <h2 class="text-base font-semibold m-0 normal-case tracking-normal text-foreground">{{ mode === 'create' ? 'new playlist' : 'edit playlist' }}</h2>
+        <button type="button" class="bg-transparent border-0 cursor-pointer text-muted-foreground text-base p-1 leading-none hover:text-foreground" @click="close" aria-label="close">✕</button>
       </header>
 
-      <div class="fields">
-        <div class="field">
-          <label for="pl-name">name</label>
-          <input id="pl-name" v-model="form.name" :class="{ error: nameError }" maxlength="200" />
-          <span v-if="nameError" class="err">{{ nameError }}</span>
+      <div class="flex flex-col gap-4 px-6 py-5">
+        <div class="flex flex-col gap-[0.3rem]">
+          <label for="pl-name" class="text-[0.8rem] text-muted-foreground font-medium">name</label>
+          <input
+            id="pl-name"
+            v-model="form.name"
+            maxlength="200"
+            class="text-[0.9rem] px-[0.6rem] py-[0.45rem] border outline-none font-sans text-foreground bg-input focus:border-ring"
+            :class="nameError ? 'border-destructive' : 'border-border'"
+          />
+          <span v-if="nameError" class="text-xs text-destructive">{{ nameError }}</span>
         </div>
 
-        <div class="toggles">
-          <label class="toggle">
+        <div class="flex gap-6">
+          <label class="flex items-center gap-[0.4rem] flex-row cursor-pointer text-foreground text-[0.88rem]">
             <input type="checkbox" v-model="form.shuffle" />
             shuffle
           </label>
-          <label class="toggle">
+          <label class="flex items-center gap-[0.4rem] flex-row cursor-pointer text-foreground text-[0.88rem]">
             <input type="checkbox" v-model="form.loop" />
             loop
           </label>
         </div>
       </div>
 
-      <footer>
-        <button v-if="mode === 'edit'" type="button" class="delete-btn" @click="remove">delete</button>
-        <div class="actions">
-          <button type="button" @click="close">cancel</button>
-          <button type="submit" class="primary">{{ mode === 'create' ? 'create' : 'save' }}</button>
+      <footer class="flex items-center justify-between px-6 py-4 border-t border-border">
+        <button v-if="mode === 'edit'" type="button" class="px-4 py-[0.45rem] border border-destructive bg-background text-destructive text-[0.85rem] cursor-pointer font-sans hover:bg-destructive/10" @click="remove">delete</button>
+        <div class="flex gap-2 ml-auto">
+          <button type="button" class="px-4 py-[0.45rem] border border-border bg-background text-foreground text-[0.85rem] cursor-pointer font-sans hover:bg-muted" @click="close">cancel</button>
+          <button type="submit" class="px-4 py-[0.45rem] border border-primary bg-primary text-primary-foreground text-[0.85rem] cursor-pointer font-sans hover:opacity-85">{{ mode === 'create' ? 'create' : 'save' }}</button>
         </div>
       </footer>
     </form>
   </dialog>
 </template>
-
-<style scoped>
-dialog {
-  border: 1px solid var(--border);
-  padding: 0;
-  width: min(380px, 90vw);
-  background: var(--background);
-  color: var(--foreground);
-}
-
-dialog::backdrop { background: oklch(0 0 0 / 0.65); }
-
-form { display: flex; flex-direction: column; }
-
-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.25rem 1.5rem 1rem;
-  border-bottom: 1px solid var(--border);
-}
-
-h2 { font-size: 1rem; font-weight: 600; margin: 0; }
-
-.close-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--muted-foreground);
-  font-size: 1rem;
-  padding: 0.25rem;
-  line-height: 1;
-}
-
-.close-btn:hover { color: var(--foreground); }
-
-.fields {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
-}
-
-.field { display: flex; flex-direction: column; gap: 0.3rem; }
-
-label {
-  font-size: 0.8rem;
-  color: var(--muted-foreground);
-  font-weight: 500;
-}
-
-input[type="text"],
-input:not([type="checkbox"]) {
-  font-size: 0.9rem;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid var(--border);
-  outline: none;
-  font-family: inherit;
-  color: var(--foreground);
-  background: var(--input);
-}
-
-input:not([type="checkbox"]):focus { border-color: var(--ring); }
-
-input.error { border-color: var(--destructive); }
-
-.err { font-size: 0.75rem; color: var(--destructive); }
-
-.toggles { display: flex; gap: 1.5rem; }
-
-.toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-direction: row;
-  cursor: pointer;
-  color: var(--foreground);
-  font-size: 0.88rem;
-}
-
-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--border);
-}
-
-.actions { display: flex; gap: 0.5rem; margin-left: auto; }
-
-button {
-  padding: 0.45rem 1rem;
-  border: 1px solid var(--border);
-  background: var(--background);
-  color: var(--foreground);
-  font-size: 0.85rem;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-button:hover { background: var(--muted); }
-
-button.primary { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
-button.primary:hover { opacity: 0.85; background: var(--primary); }
-button.delete-btn { color: var(--destructive); border-color: var(--destructive); }
-button.delete-btn:hover { background: color-mix(in oklch, var(--destructive) 10%, transparent); }
-</style>

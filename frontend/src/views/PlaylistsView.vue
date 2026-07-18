@@ -85,70 +85,85 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="playlists-page">
-    <div class="toolbar">
+  <div class="flex flex-col gap-5 p-8 h-full">
+    <header class="flex items-center justify-between shrink-0">
       <h1>playlists</h1>
-      <button class="primary" @click="dialogEl?.openCreate()">new playlist</button>
-    </div>
+      <button
+        class="px-4 py-[0.45rem] border-0 bg-primary text-primary-foreground text-[0.85rem] cursor-pointer font-sans hover:opacity-85 disabled:opacity-40 disabled:cursor-default"
+        @click="dialogEl?.openCreate()"
+      >new playlist</button>
+    </header>
 
-    <p v-if="error" class="error-msg">{{ error }}</p>
+    <p v-if="error" class="text-destructive text-[0.85rem]">{{ error }}</p>
 
-    <div class="layout">
+    <div class="grid grid-cols-[220px_1fr] gap-4 flex-1 min-h-0">
       <!-- ✮ ⋆ ˚｡𖦹 left: playlist list -->
-      <aside class="list-panel">
-        <div v-if="loading" class="empty">loading…</div>
-        <ul v-else-if="playlists.length > 0">
+      <aside class="border border-border overflow-y-auto">
+        <div v-if="loading" class="text-muted-foreground text-[0.88rem] p-8 text-center">loading…</div>
+        <ul v-else-if="playlists.length > 0" class="list-none m-0 p-2">
           <li
             v-for="pl in playlists"
             :key="pl.id"
-            :class="{ active: active?.id === pl.id }"
+            class="flex flex-col gap-[0.15rem] px-3 py-[0.6rem] cursor-pointer text-[0.88rem] hover:bg-muted"
+            :class="active?.id === pl.id ? 'bg-muted border-l-2 border-l-foreground' : ''"
             @click="selectPlaylist(pl)"
           >
-            <span class="pl-name">{{ pl.name }}</span>
-            <span class="pl-meta">
+            <span class="font-medium text-foreground">{{ pl.name }}</span>
+            <span class="flex gap-[0.4rem] text-[0.73rem] text-muted-foreground">
               <span v-if="pl.shuffle">shuffle</span>
               <span v-if="pl.loop">loop</span>
             </span>
           </li>
         </ul>
-        <div v-else class="empty">no playlists yet</div>
+        <div v-else class="text-muted-foreground text-[0.88rem] p-8 text-center">no playlists yet</div>
       </aside>
 
       <!-- ⋆˙⟡ right: items for selected playlist -->
-      <section class="detail-panel" v-if="active">
-        <div class="detail-header">
-          <span class="detail-title">{{ active.name }}</span>
-          <button class="edit-btn" @click="dialogEl?.openEdit(active)">edit</button>
+      <section class="border border-border flex flex-col overflow-hidden" v-if="active">
+        <div class="flex items-center justify-between px-4 py-[0.85rem] border-b border-border shrink-0">
+          <span class="font-semibold text-[0.95rem]">{{ active.name }}</span>
+          <button
+            class="px-[0.6rem] py-1 border border-border bg-transparent text-[0.8rem] cursor-pointer text-muted-foreground font-sans hover:bg-muted hover:text-foreground"
+            @click="dialogEl?.openEdit(active)"
+          >edit</button>
         </div>
 
-        <div v-if="itemsLoading" class="empty">loading…</div>
+        <div v-if="itemsLoading" class="text-muted-foreground text-[0.88rem] p-8 text-center">loading…</div>
 
-        <ol v-else-if="activeItems.length > 0" class="items-list">
-          <li v-for="item in activeItems" :key="item.id">
-            <span class="item-pos">{{ item.position }}</span>
-            <span class="item-info">
-              <span class="item-title">{{ item.title }}</span>
-              <span v-if="item.artist" class="item-artist">{{ item.artist }}</span>
+        <ol v-else-if="activeItems.length > 0" class="list-none m-0 p-2 overflow-y-auto flex-1">
+          <li v-for="item in activeItems" :key="item.id" class="flex items-center gap-3 px-2 py-2 text-[0.87rem] hover:bg-muted">
+            <span class="text-muted-foreground text-[0.78rem] min-w-6 text-right">{{ item.position }}</span>
+            <span class="flex-1 flex flex-col gap-[0.1rem] overflow-hidden">
+              <span class="font-medium text-foreground whitespace-nowrap overflow-hidden text-ellipsis">{{ item.title }}</span>
+              <span v-if="item.artist" class="text-[0.78rem] text-muted-foreground">{{ item.artist }}</span>
             </span>
-            <span class="item-dur">{{ formatDuration(item.duration) }}</span>
-            <button class="remove-btn" @click="onRemoveItem(item.id)" aria-label="remove">✕</button>
+            <span class="text-[0.78rem] text-muted-foreground whitespace-nowrap">{{ formatDuration(item.duration) }}</span>
+            <button
+              class="bg-transparent border-0 cursor-pointer text-muted-foreground text-[0.8rem] p-[0.2rem] leading-none shrink-0 opacity-40 hover:text-destructive hover:opacity-100"
+              @click="onRemoveItem(item.id)"
+              aria-label="remove"
+            >✕</button>
           </li>
         </ol>
 
-        <div v-else class="empty">no tracks yet</div>
+        <div v-else class="text-muted-foreground text-[0.88rem] p-8 text-center">no tracks yet</div>
 
         <!-- ✮ ⋆ ˚｡𖦹 add track — searchable picker + upload -->
-        <div class="add-track">
+        <div class="flex flex-col gap-2 px-4 py-3 border-t border-border shrink-0">
           <MediaPicker
             v-model="addMediaId"
             :media="media"
             @media-added="onMediaUploaded"
           />
-          <button class="primary" :disabled="!addMediaId" @click="onAddItem">add</button>
+          <button
+            class="px-4 py-[0.45rem] border-0 bg-primary text-primary-foreground text-[0.85rem] cursor-pointer font-sans hover:opacity-85 disabled:opacity-40 disabled:cursor-default"
+            :disabled="!addMediaId"
+            @click="onAddItem"
+          >add</button>
         </div>
       </section>
 
-      <section class="detail-panel empty-detail" v-else>
+      <section class="border border-border flex flex-col overflow-hidden items-center justify-center" v-else>
         select a playlist to view its tracks
       </section>
     </div>
@@ -161,175 +176,3 @@ onMounted(() => {
     />
   </div>
 </template>
-
-<style scoped>
-.playlists-page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  padding: 2rem;
-  height: 100%;
-}
-
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-}
-
-h1 { font-size: 1.1rem; font-weight: 600; margin: 0; }
-
-button.primary {
-  padding: 0.45rem 1rem;
-  border: none;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  font-size: 0.85rem;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-button.primary:hover { opacity: 0.85; }
-button.primary:disabled { opacity: 0.4; cursor: default; }
-
-.layout {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 1rem;
-  flex: 1;
-  min-height: 0;
-}
-
-.list-panel {
-  border: 1px solid var(--border);
-  overflow-y: auto;
-}
-
-ul { list-style: none; margin: 0; padding: 0.5rem; }
-
-li {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.6rem 0.75rem;
-  cursor: pointer;
-  font-size: 0.88rem;
-}
-
-li:hover { background: var(--muted); }
-/* ⋆˙⟡ active state: left border instead of bg fill */
-li.active { background: var(--muted); border-left: 2px solid var(--foreground); }
-
-.pl-name { font-weight: 500; color: var(--foreground); }
-
-.pl-meta {
-  display: flex;
-  gap: 0.4rem;
-  font-size: 0.73rem;
-  color: var(--muted-foreground);
-}
-
-.detail-panel {
-  border: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.empty-detail {
-  align-items: center;
-  justify-content: center;
-}
-
-.detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.detail-title { font-weight: 600; font-size: 0.95rem; }
-
-.edit-btn {
-  padding: 0.25rem 0.6rem;
-  border: 1px solid var(--border);
-  background: transparent;
-  font-size: 0.8rem;
-  cursor: pointer;
-  color: var(--muted-foreground);
-  font-family: inherit;
-}
-
-.edit-btn:hover { background: var(--muted); color: var(--foreground); }
-
-.items-list {
-  list-style: none;
-  margin: 0;
-  padding: 0.5rem;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.items-list li {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.5rem;
-  font-size: 0.87rem;
-}
-
-.items-list li:hover { background: var(--muted); }
-
-.item-pos { color: var(--muted-foreground); font-size: 0.78rem; min-width: 1.5rem; text-align: right; }
-
-.item-info { flex: 1; display: flex; flex-direction: column; gap: 0.1rem; overflow: hidden; }
-
-.item-title {
-  font-weight: 500;
-  color: var(--foreground);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.item-artist { font-size: 0.78rem; color: var(--muted-foreground); }
-
-.item-dur { font-size: 0.78rem; color: var(--muted-foreground); white-space: nowrap; }
-
-.remove-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--muted-foreground);
-  font-size: 0.8rem;
-  padding: 0.2rem;
-  line-height: 1;
-  flex-shrink: 0;
-  opacity: 0.4;
-}
-
-.remove-btn:hover { color: var(--destructive); opacity: 1; }
-
-.add-track {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.add-track select:focus { border-color: var(--ring); }
-
-.empty {
-  color: var(--muted-foreground);
-  font-size: 0.88rem;
-  padding: 2rem;
-  text-align: center;
-}
-
-.error-msg { color: var(--destructive); font-size: 0.85rem; }
-</style>

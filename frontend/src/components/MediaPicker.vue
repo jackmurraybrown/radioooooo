@@ -124,7 +124,7 @@ function onDrop(e: DragEvent) {
   >
     <!-- ⋆˙⟡ combobox + upload button -->
     <div class="flex w-full gap-1.5 items-stretch">
-      <ComboboxRoot v-model="selected" class="combobox-root flex-1 min-w-0">
+      <ComboboxRoot v-model="selected" class="flex-1 min-w-0 *:w-full [&>*>*]:w-full">
         <ComboboxAnchor
           class="flex items-center w-full border border-border bg-input transition-colors"
           :class="isDragOver ? 'border-ring' : 'focus-within:border-ring'"
@@ -142,7 +142,7 @@ function onDrop(e: DragEvent) {
         <!-- ⊹ ₊ ⟡ no portal — stays inside native dialog top layer
              positionStrategy=fixed escapes overflow-y:auto on .fields -->
         <ComboboxContent
-          class="mp-content bg-background border border-border z-9999 overflow-hidden"
+          class="w-(--reka-combobox-trigger-width) min-w-55 bg-background border border-border z-9999 overflow-hidden"
           :side-offset="2"
           position="popper"
           position-strategy="fixed"
@@ -154,7 +154,7 @@ function onDrop(e: DragEvent) {
               v-for="m in props.media"
               :key="m.id"
               :value="m.id"
-              class="mp-item flex items-center gap-2 px-3 py-[0.45rem] text-sm cursor-pointer select-none text-foreground"
+              class="flex items-center gap-2 px-3 py-[0.45rem] text-sm cursor-pointer select-none text-foreground data-highlighted:bg-muted data-[state=checked]:bg-muted"
             >
               <span class="font-medium flex-1 truncate">{{ m.title }}</span>
               <span v-if="m.artist" class="text-xs text-muted-foreground truncate max-w-32">{{ m.artist }}</span>
@@ -201,21 +201,3 @@ function onDrop(e: DragEvent) {
     <input ref="fileInputEl" type="file" accept=".mp3,.aac,.m4a" multiple class="hidden" @change="onFileSelect" />
   </div>
 </template>
-
-<style scoped>
-/* ⋆˙⟡ reka injects PopperRoot > ListboxRoot between ComboboxRoot and ComboboxAnchor
-   — force both wrapper divs to fill available width so the anchor stretches */
-.combobox-root :deep(> *),
-.combobox-root :deep(> * > *) {
-  width: 100%;
-}
-
-/* ✶. ₊ dropdown width matches the anchor */
-.mp-content {
-  width: var(--reka-combobox-trigger-width);
-  min-width: 220px;
-}
-
-.mp-item[data-highlighted] { background: var(--muted); }
-.mp-item[data-state="checked"] { background: var(--muted); }
-</style>
