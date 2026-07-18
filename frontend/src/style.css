@@ -43,7 +43,7 @@
   --primary-foreground: oklch(0.06 0 0);
   --destructive: oklch(0.65 0.22 27);
 
-  /* ⊹ ₊ ⟡ fullcalendar dark overrides — mapped to our tokens */
+  /* ⊹ ₊ ⟡ fullcalendar dark overrides */
   --fc-border-color: var(--border);
   --fc-button-bg-color: var(--muted);
   --fc-button-border-color: var(--border);
@@ -75,6 +75,17 @@
     transform: translate(-50%, -50%);
     margin: 0;
   }
+  h1 {
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+  h2 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted-foreground);
+  }
   body {
     @apply bg-background text-foreground font-sans;
     font-size: 14px;
@@ -94,14 +105,18 @@
   .field label {
     @apply text-xs font-medium text-[--muted-foreground];
   }
-  .input, .select, .textarea {
+  .input,
+  .select,
+  .textarea {
     @apply w-full border border-[--border] bg-[--muted] px-3 py-1.5 text-sm text-[--foreground]
       font-sans
       placeholder:text-[--muted-foreground]
       focus:outline-none focus:ring-1 focus:ring-[--ring]
       disabled:opacity-40 disabled:cursor-not-allowed;
   }
-  .input.error, .select.error, .textarea.error {
+  .input.error,
+  .select.error,
+  .textarea.error {
     @apply border-[--destructive] focus:ring-[--destructive]/30;
   }
   .select {
