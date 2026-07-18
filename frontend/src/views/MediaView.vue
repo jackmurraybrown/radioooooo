@@ -28,9 +28,9 @@ function formatDuration(seconds?: number | null): string {
 // ✶. ݁ ˖ status badge classes — tinted dark bg so it reads without being loud
 function statusClasses(status?: string | null): string {
   const base = 'text-xs px-2 py-[0.2rem]'
-  if (status === 'ready') return `${base} bg-[oklch(0.15_0.04_145)] text-[oklch(0.7_0.18_145)]`
-  if (status === 'pending') return `${base} bg-[oklch(0.15_0.04_75)] text-[oklch(0.75_0.12_75)]`
-  if (status === 'error') return `${base} bg-[oklch(0.15_0.04_27)] text-destructive`
+  if (status === 'ready') return `${base} bg-status-ready-bg text-success`
+  if (status === 'pending') return `${base} bg-status-pending-bg text-status-pending-fg`
+  if (status === 'error') return `${base} bg-status-error-bg text-destructive`
   return `${base} bg-muted text-muted-foreground`
 }
 

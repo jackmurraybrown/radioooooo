@@ -329,7 +329,7 @@ onMounted(() => {
   <!-- ⊹ ₊ ⟡ channel delete confirmation -->
   <dialog
     ref="confirmDialogEl"
-    class="border border-border p-6 w-[min(360px,90vw)] bg-background text-foreground backdrop:bg-[oklch(0_0_0/0.65)]"
+    class="border border-border p-6 w-[min(360px,90vw)] bg-background text-foreground backdrop:bg-backdrop"
   >
     <p class="mb-5 text-[0.9rem]">delete <strong>{{ pendingDelete?.name }}</strong>? all its episodes will be removed.</p>
     <div class="flex justify-end gap-2">

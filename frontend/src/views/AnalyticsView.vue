@@ -186,9 +186,9 @@ onUnmounted(() => clearInterval(liveTimer))
               {{ c.countryCode }}</td>
             <td
               class="w-[40%] px-2 py-[0.35rem] text-[0.82rem] border-b border-border/40 align-middle group-hover:bg-muted">
-              <div class="h-1 bg-muted overflow-hidden rounded-[2px]">
+              <div class="h-1 bg-muted overflow-hidden rounded-xs">
                 <div
-                  class="h-full bg-[oklch(0.72_0.18_250)] rounded-[2px] transition-[width] duration-[400ms] ease-[ease]"
+                  class="h-full bg-accent rounded-xs transition-[width] duration-400 ease-[ease]"
                   :style="{ width: pct(c.listeners) }"></div>
               </div>
             </td>

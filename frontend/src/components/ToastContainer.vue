@@ -13,7 +13,7 @@ const { toasts, dismiss } = useToast()
         v-for="toast in toasts"
         :key="toast.id"
         class="flex items-center gap-3 px-4 py-[0.65rem] text-sm pointer-events-auto max-w-90 border bg-muted text-foreground animate-[slide-in_0.15s_ease]"
-        :class="toast.type === 'error' ? 'border-destructive text-destructive' : toast.type === 'success' ? 'border-[oklch(0.45_0.15_145)] text-[oklch(0.7_0.18_145)]' : 'border-border'"
+        :class="toast.type === 'error' ? 'border-destructive text-destructive' : toast.type === 'success' ? 'border-success-border text-success' : 'border-border'"
       >
         <span class="flex-1">{{ toast.message }}</span>
         <button

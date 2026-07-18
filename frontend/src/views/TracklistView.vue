@@ -115,7 +115,7 @@ function formatTime(iso: string) {
         </button>
       </div>
 
-      <p v-if="saved" class="text-[oklch(0.7_0.18_145)] mt-3 text-[0.85rem]">saved</p>
+      <p v-if="saved" class="text-success mt-3 text-[0.85rem]">saved</p>
       <p v-if="error" class="text-destructive mt-3 text-[0.85rem]">{{ error }}</p>
     </div>
   </div>

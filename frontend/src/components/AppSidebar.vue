@@ -39,8 +39,7 @@ onMounted(loadStation)
 </script>
 
 <template>
-  <!-- ⊹ ࣪ ˖ TODO: add --sidebar-background to design tokens, hardcoded oklch for now -->
-  <nav class="w-[180px] h-screen flex flex-col py-5 border-r border-border bg-[oklch(0.04_0_0)] shrink-0">
+  <nav class="w-[180px] h-screen flex flex-col py-5 border-r border-border bg-sidebar-background shrink-0">
     <RouterLink to="/settings" class="flex items-center px-4 pb-6 no-underline min-h-[40px] border-b border-border mb-3">
       <img v-if="logoUrl" :src="logoUrl" :alt="stationName" class="w-8 h-8 object-cover" />
       <span v-else class="text-[0.85rem] font-semibold text-foreground tracking-[0.05em] lowercase">{{ stationName || 'radiooo' }}</span>

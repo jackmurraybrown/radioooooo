@@ -263,7 +263,7 @@ defineExpose({ openCreate, openEdit, close })
 <template>
   <dialog
     ref="dialogEl"
-    class="border border-border p-0 w-[min(560px,90vw)] min-h-175 bg-background text-foreground backdrop:bg-[oklch(0_0_0/0.65)]"
+    class="border border-border p-0 w-[min(560px,90vw)] min-h-175 bg-background text-foreground backdrop:bg-backdrop"
     @click.self="close"
   >
     <TabsRoot v-model="activeTab">
@@ -433,7 +433,7 @@ defineExpose({ openCreate, openEdit, close })
             <template v-else>
               <TracklistEditor ref="editorRef" v-model="tracks" :episodeDuration="episodeDuration" />
               <p v-if="tracksError" class="text-[0.8rem] text-destructive mt-2">{{ tracksError }}</p>
-              <p v-if="tracksSaved" class="text-[0.8rem] text-[oklch(0.7_0.18_145)] mt-2">saved</p>
+              <p v-if="tracksSaved" class="text-[0.8rem] text-success mt-2">saved</p>
             </template>
           </div>
 

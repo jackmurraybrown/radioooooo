@@ -77,7 +77,7 @@ defineExpose({ openCreate, openEdit, close })
 </script>
 
 <template>
-  <dialog ref="dialogEl" class="border border-border p-0 w-[min(380px,90vw)] bg-background text-foreground backdrop:bg-[oklch(0_0_0/0.65)]">
+  <dialog ref="dialogEl" class="border border-border p-0 w-[min(380px,90vw)] bg-background text-foreground backdrop:bg-backdrop">
     <form class="flex flex-col" @submit.prevent="submit" novalidate>
       <header class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-border">
         <h2 class="text-base font-semibold m-0 normal-case tracking-normal text-foreground">{{ mode === 'create' ? 'new playlist' : 'edit playlist' }}</h2>
