@@ -131,6 +131,16 @@ func (s *Store) CreateAPIKey(ctx context.Context, stationID string) (string, err
 	return plain, err
 }
 
+// RotateAPIKey revokes all existing keys and issues a fresh one ✮⋆‧°
+func (s *Store) RotateAPIKey(ctx context.Context, stationID string) (string, error) {
+	if _, err := s.db.Exec(ctx, `
+		delete from api_keys where station_id = $1::uuid
+	`, stationID); err != nil {
+		return "", err
+	}
+	return s.CreateAPIKey(ctx, stationID)
+}
+
 // VerifyAPIKey checks a plain-text key against stored hashes and returns the
 // associated station id. returns pgx.ErrNoRows if the key is not found.
 func (s *Store) VerifyAPIKey(ctx context.Context, plain string) (string, error) {

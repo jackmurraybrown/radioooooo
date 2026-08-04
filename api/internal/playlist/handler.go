@@ -295,11 +295,11 @@ func (h *Handler) addItem(ctx context.Context, input *addItemInput) (*itemOutput
 }
 
 func (h *Handler) removeItem(ctx context.Context, input *itemInput) (*struct{}, error) {
-	_, ok := auth.StationIDFromContext(ctx)
+	stationID, ok := auth.StationIDFromContext(ctx)
 	if !ok {
 		return nil, huma.Error403Forbidden("forbidden")
 	}
-	if err := h.store.RemoveItem(ctx, input.ItemID, input.ID); err != nil {
+	if err := h.store.RemoveItem(ctx, input.ItemID, input.ID, stationID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, huma.Error404NotFound("item not found")
 		}

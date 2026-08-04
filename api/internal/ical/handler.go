@@ -110,11 +110,11 @@ func (h *Handler) create(ctx context.Context, input *createInput) (*feedOutput, 
 func (h *Handler) list(ctx context.Context, input *struct {
 	ChannelID string `path:"channelId"`
 }) (*listOutput, error) {
-	_, ok := auth.StationIDFromContext(ctx)
+	stationID, ok := auth.StationIDFromContext(ctx)
 	if !ok {
 		return nil, huma.Error403Forbidden("forbidden")
 	}
-	feeds, err := h.store.List(ctx, input.ChannelID)
+	feeds, err := h.store.ListByChannel(ctx, input.ChannelID, stationID)
 	if err != nil {
 		slog.Error("failed to list ical feeds", "error", err)
 		return nil, huma.Error500InternalServerError("internal error")
